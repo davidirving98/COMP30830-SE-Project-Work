@@ -1,14 +1,21 @@
 import json
 import time
 from datetime import datetime, timezone, timedelta
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import requests
-import sys
 
-# Resolve bikeinfo/config.py relative to this file.
+# Load bikeinfo/config.py by absolute file path.
 BIKEINFO_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BIKEINFO_DIR))
-import config  # api info should not be shown in public
+CONFIG_PATH = BIKEINFO_DIR / "config.py"
+if not CONFIG_PATH.exists():
+    raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
+print(f"Using config file: {CONFIG_PATH}", flush=True)
+_spec = spec_from_file_location("bikeinfo_config", CONFIG_PATH)
+if _spec is None or _spec.loader is None:
+    raise ImportError(f"Cannot load config from: {CONFIG_PATH}")
+config = module_from_spec(_spec)
+_spec.loader.exec_module(config)  # api info should not be shown in public
 
 output_dir = Path("data/dublinbike_status")
 output_dir.mkdir(parents=True, exist_ok=True)

@@ -1,12 +1,19 @@
 import json
 from pathlib import Path
 from datetime import datetime, timezone
-import sys
+from importlib.util import module_from_spec, spec_from_file_location
 import sqlalchemy as sqla
 
 BIKEINFO_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BIKEINFO_DIR))
-import config
+CONFIG_PATH = BIKEINFO_DIR / "config.py"
+if not CONFIG_PATH.exists():
+    raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
+print(f"Using config file: {CONFIG_PATH}", flush=True)
+_spec = spec_from_file_location("bikeinfo_config", CONFIG_PATH)
+if _spec is None or _spec.loader is None:
+    raise ImportError(f"Cannot load config from: {CONFIG_PATH}")
+config = module_from_spec(_spec)
+_spec.loader.exec_module(config)
 
 DB_NAME = getattr(config, "DB_NAME", "postgres")
 
