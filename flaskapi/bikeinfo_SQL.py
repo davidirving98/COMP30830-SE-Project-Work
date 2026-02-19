@@ -1,20 +1,13 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import sqlalchemy as sqla
+import config
+import sys
 
 
 # load config.py
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CONFIG_PATH = PROJECT_ROOT / "config.py"
-if not CONFIG_PATH.exists():
-    raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
-
-_spec = spec_from_file_location("project_config", CONFIG_PATH)
-if _spec is None or _spec.loader is None:
-    raise ImportError(f"Cannot load config from: {CONFIG_PATH}")
-config = module_from_spec(_spec)
-_spec.loader.exec_module(config)
-
+sys.path.insert(0, str(PROJECT_ROOT))
 
 engine = sqla.create_engine(
     f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
@@ -22,10 +15,14 @@ engine = sqla.create_engine(
 )
 
 
-def _fetch_all(sql, params=None):
+def _fetch_all(
+    sql, params=None
+):  # Helper function to execute SQL and return list of dicts
     with engine.connect() as conn:
-        rows = conn.execute(sqla.text(sql), params or {}).mappings()
-        return [dict(row) for row in rows]
+        rows = conn.execute(
+            sqla.text(sql), params or {}
+        ).mappings()  #  Use .mappings() to get dict-like rows
+        return [dict(row) for row in rows]  # Convert RowMapping to regular dict
 
 
 def get_stations_sql():
@@ -36,7 +33,9 @@ def get_availability_sql():
     return _fetch_all("SELECT * FROM availability")
 
 
-def get_station_sql(station_id):
+def get_station_sql(
+    station_id,
+):  # the data returned is merged by station and availability tables together.
     sql = """
     SELECT
         s.number,
@@ -46,66 +45,11 @@ def get_station_sql(station_id):
         s.lat,
         s.lng
     FROM station s
-    JOIN (
-        SELECT number, MAX(last_update) AS max_last_update
-        FROM availability
-        GROUP BY number
-    ) latest
-        ON latest.number = s.number
     JOIN availability a
-        ON a.number = latest.number
-       AND a.last_update = latest.max_last_update
+        ON a.number = s.number
     WHERE s.number = :station_id
+    ORDER BY a.last_update DESC
+    LIMIT 1
     """
     rows = _fetch_all(sql, {"station_id": station_id})
     return rows[0] if rows else None
-
-
-def search_stations_sql(filters):
-    sql = """
-    SELECT
-        s.number,
-        s.name,
-        a.available_bikes,
-        a.available_bike_stands AS available_stands,
-        s.lat,
-        s.lng
-    FROM station s
-    JOIN (
-        SELECT number, MAX(last_update) AS max_last_update
-        FROM availability
-        GROUP BY number
-    ) latest
-        ON latest.number = s.number
-    JOIN availability a
-        ON a.number = latest.number
-       AND a.last_update = latest.max_last_update
-    """
-
-    where = []
-    params = {}
-
-    if filters.get("number") is not None:
-        where.append("s.number = :number")
-        params["number"] = filters["number"]
-    if filters.get("name"):
-        where.append("s.name LIKE :name")
-        params["name"] = f"%{filters['name']}%"
-    if filters.get("available_bikes") is not None:
-        where.append("a.available_bikes = :available_bikes")
-        params["available_bikes"] = filters["available_bikes"]
-    if filters.get("available_stands") is not None:
-        where.append("a.available_bike_stands = :available_stands")
-        params["available_stands"] = filters["available_stands"]
-    if filters.get("lat") is not None:
-        where.append("s.lat = :lat")
-        params["lat"] = filters["lat"]
-    if filters.get("lng") is not None:
-        where.append("s.lng = :lng")
-        params["lng"] = filters["lng"]
-
-    if where:
-        sql += " WHERE " + " AND ".join(where)
-
-    sql += " ORDER BY s.number"
-    return _fetch_all(sql, params)
