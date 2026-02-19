@@ -2,13 +2,13 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import sqlalchemy as sqla
 
-# Load bikeinfo/config.py by absolute file path.
-BIKEINFO_DIR = Path(__file__).resolve().parent.parent
-CONFIG_PATH = BIKEINFO_DIR / "config.py"
+# Load project root config.py by absolute file path.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.py"
 if not CONFIG_PATH.exists():
     raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
 print(f"Using config file: {CONFIG_PATH}", flush=True)
-_spec = spec_from_file_location("bikeinfo_config", CONFIG_PATH)
+_spec = spec_from_file_location("project_config", CONFIG_PATH)
 if _spec is None or _spec.loader is None:
     raise ImportError(f"Cannot load config from: {CONFIG_PATH}")
 config = module_from_spec(_spec)

@@ -1,7 +1,7 @@
 # bikeinfo 模块说明
 
 ## 配置文件
-- `bikeinfo/config.py`  
+- `config.py`（项目根目录）  
   存放数据库连接信息和 Dublin Bikes API 地址（如 `DB_USER`、`DB_PASSWORD`、`DB_HOST`、`BIKE_STATUS_URL`）。
 
 ## 原始 Notebook
@@ -33,7 +33,7 @@
   本地缓存的站点状态 JSON 历史数据。
 
 ## 推荐执行顺序
-1. 先配置 `bikeinfo/config.py`。
+1. 先配置项目根目录 `config.py`。
 2. 运行 `bikeinfo/bikeapi_cells/cell02_init_database.py` 初始化数据库。
 3. 二选一导入方式：
 4. 方式 A：运行 `bikeinfo/bikeapi_cells/cell03_import_json_to_database.py`（从本地 JSON 导入）。
