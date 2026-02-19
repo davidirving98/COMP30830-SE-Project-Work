@@ -8,7 +8,7 @@ import sys
 # load config.py
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
-
+# define engine as a entrance to the database, using config.py for credentials and connection info
 engine = sqla.create_engine(
     f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
     f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{config.DB_NAME}"
