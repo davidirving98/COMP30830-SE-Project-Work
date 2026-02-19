@@ -21,6 +21,7 @@ DB_ENV = os.getenv("DB_ENV", "local").lower()
 
 DB_CONFIGS = {
     "local": {
+        "DB_DIALECT": "mysql",
         "DB_HOST": "127.0.0.1",
         "DB_PORT": 3306,
         "DB_USER": "root",
@@ -29,6 +30,7 @@ DB_CONFIGS = {
         "DB_SSLMODE": "prefer",
     },
     "aws": {
+        "DB_DIALECT": "postgresql",
         "DB_HOST": "",
         "DB_PORT": 5432,
         "DB_USER": "",
@@ -43,6 +45,9 @@ if DB_ENV not in DB_CONFIGS:
 
 ENV_PREFIX = "LOCAL" if DB_ENV == "local" else "AWS"
 
+DB_DIALECT = os.getenv(
+    f"{ENV_PREFIX}_DB_DIALECT", DB_CONFIGS[DB_ENV]["DB_DIALECT"]
+).lower()
 DB_HOST = os.getenv(f"{ENV_PREFIX}_DB_HOST", DB_CONFIGS[DB_ENV]["DB_HOST"])
 DB_PORT = int(os.getenv(f"{ENV_PREFIX}_DB_PORT", DB_CONFIGS[DB_ENV]["DB_PORT"]))
 DB_USER = os.getenv(f"{ENV_PREFIX}_DB_USER", DB_CONFIGS[DB_ENV]["DB_USER"])

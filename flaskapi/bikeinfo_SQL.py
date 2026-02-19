@@ -1,18 +1,26 @@
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 import sqlalchemy as sqla
 import config
-import sys
 
 
-# load config.py
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
+def _build_connection_string():
+    if config.DB_DIALECT == "mysql":
+        return (
+            f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
+            f"@{config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}"
+        )
+    if config.DB_DIALECT in {"postgresql", "postgres"}:
+        return (
+            f"postgresql+psycopg2://{config.DB_USER}:{config.DB_PASSWORD}"
+            f"@{config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}"
+            f"?sslmode={config.DB_SSLMODE}"
+        )
+    raise ValueError(
+        f"Unsupported DB_DIALECT '{config.DB_DIALECT}'. Use mysql or postgresql."
+    )
+
+
 # define engine as a entrance to the database, using config.py for credentials and connection info
-engine = sqla.create_engine(
-    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{config.DB_NAME}"
-)
+engine = sqla.create_engine(_build_connection_string())
 
 
 def _fetch_all(
