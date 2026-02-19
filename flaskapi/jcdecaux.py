@@ -1,6 +1,7 @@
 import requests
+import os
 
-JCDECAUX_API_KEY = "d0241f321be26bec04b72f41626ca43cb4ec482e"
+JCDECAUX_API_KEY = os.getenv("JCDECAUX_API_KEY")
 
 CONTRACT = "dublin"
 
