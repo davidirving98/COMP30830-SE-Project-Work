@@ -19,12 +19,12 @@ DB_CONFIGS = {
         "DB_NAME": "COMP30830_SW",
     },
     "rds": {
-        "DB_DIALECT": "bikeinfo",
+        "DB_DIALECT": "mysql",
         "DB_HOST": "database-2.cn2ekioaaw47.eu-west-1.rds.amazonaws.com",
         "DB_PORT": 3306,
         "DB_USER": "alex",
         "DB_PASSWORD": "gojra6-kufwUz-qemvyj",
-        "DB_NAME": "mysql",
+        "DB_NAME": "bikeinfo",
     },
 }
 
