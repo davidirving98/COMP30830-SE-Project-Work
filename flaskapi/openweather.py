@@ -1,6 +1,7 @@
 import requests
+import os
 
-OPENWEATHER_API_KEY = "9c7c7d848b117f7bc3fa6b2b96e54307"
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 CITY = "Dublin"
 
@@ -23,5 +24,4 @@ def get_weather():
         "wind_speed": data["wind"]["speed"] }
 
     return weather
-
 
