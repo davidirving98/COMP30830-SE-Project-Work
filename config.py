@@ -1,20 +1,7 @@
 import os
 from pathlib import Path
 
-
-def _load_env_file(env_path: Path):
-    if not env_path.exists():
-        return
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip())
-
-
 BASE_DIR = Path(__file__).resolve().parent
-_load_env_file(BASE_DIR / ".env")
 
 # Switch with env var: DB_ENV=local or DB_ENV=aws
 DB_ENV = os.getenv("DB_ENV", "local").lower()
@@ -61,7 +48,8 @@ DB_SSLMODE = os.getenv(f"{ENV_PREFIX}_DB_SSLMODE", DB_CONFIGS[DB_ENV]["DB_SSLMOD
 DATA_DIR = BASE_DIR / "bikeinfo" / "data"
 
 # JCDecaux API configuration
-BIKE_API_KEY = os.getenv("BIKE_API_KEY", "")
+JCDECAUX_API_KEY = os.getenv("JCDECAUX_API_KEY", os.getenv("BIKE_API_KEY", ""))
+BIKE_API_KEY = JCDECAUX_API_KEY
 BIKE_STATUS_URL = (
     f"https://api.jcdecaux.com/vls/v1/stations?contract=dublin&apiKey={BIKE_API_KEY}"
 )
