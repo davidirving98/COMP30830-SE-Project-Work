@@ -18,12 +18,11 @@ config = module_from_spec(_spec)
 _spec.loader.exec_module(config)
 print("config checked", flush=True)
 
-DB_NAME = getattr(config, "DB_NAME", "postgres")
+DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 
 engine = sqla.create_engine(
-    f"postgresql+psycopg2://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 5432)}/{DB_NAME}"
-    f"?sslmode={getattr(config, 'DB_SSLMODE', 'require')}"
+    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
+    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{DB_NAME}"
 )
 
 
