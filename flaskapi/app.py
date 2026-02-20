@@ -1,14 +1,21 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 import requests
 import os
 from openweather import get_weather
 from jcdecaux import get_stations, get_station
+from bikeinfo_SQL import (
+    get_stations_sql,
+    get_availability_sql,
+    get_station_sql,
+)
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def home():
-    return "Bike + Weather API is running"
+    return render_template("home.html")
+
 
 @app.route("/stations")
 def stations():
@@ -19,6 +26,7 @@ def stations():
 
     return jsonify(data)
 
+
 @app.route("/weather")
 def weather():
     data = get_weather()
@@ -27,6 +35,7 @@ def weather():
         return jsonify({"error": "Weather API unavailable"}), 500
 
     return jsonify(data)
+
 
 @app.route("/station/<int:station_id>/info")
 def station_info(station_id):
@@ -37,10 +46,36 @@ def station_info(station_id):
     if station is None or weather is None:
         return jsonify({"error": "Data unavailable"}), 500
 
-    return jsonify({
-        "station": station,
-        "weather": weather })
+    return jsonify({"station": station, "weather": weather})
+
+
+@app.route("/stations_SQL")
+def stations_sql():
+    try:
+        return jsonify(get_stations_sql())
+    except Exception as e:
+        return jsonify({"error": f"Data not found: {str(e)}"}), 500
+
+
+@app.route("/availability_SQL")
+def availability_sql():
+    try:
+        return jsonify(get_availability_sql())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/stations_SQL/<int:station_id>/info")
+def station_sql_info(station_id):
+    try:
+        station = get_station_sql(station_id)
+        if station is None:
+            return jsonify({"error": "Station not found"}), 404
+        return jsonify(station)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host ="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)
