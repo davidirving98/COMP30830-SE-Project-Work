@@ -15,23 +15,16 @@ config = module_from_spec(_spec)
 _spec.loader.exec_module(config)
 print("config checked", flush=True)
 
-DB_NAME = getattr(config, "DB_NAME", "postgres")
+DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 
-# Connect to PostgreSQL admin DB and create target DB if missing.
+# Connect to MySQL server and create target DB if missing.
 engine = sqla.create_engine(
-    f"postgresql+psycopg2://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 5432)}/postgres"
-    f"?sslmode={getattr(config, 'DB_SSLMODE', 'require')}"
+    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
+    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/"
 )
 
 with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-    exists = conn.execute(
-        sqla.text("SELECT 1 FROM pg_database WHERE datname = :name"),
-        {"name": DB_NAME}
-    ).fetchone() is not None
-
-    if exists:
-        print(f"Database already exists: {DB_NAME}", flush=True)
-    else:
-        conn.execute(sqla.text(f'CREATE DATABASE "{DB_NAME}"'))
-        print(f"Database created: {DB_NAME}", flush=True)
+    conn.execute(
+        sqla.text(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` DEFAULT CHARACTER SET utf8mb4")
+    )
+    print(f"Database ready: {DB_NAME}", flush=True)

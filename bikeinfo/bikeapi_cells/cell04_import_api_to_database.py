@@ -16,11 +16,10 @@ config = module_from_spec(_spec)
 _spec.loader.exec_module(config)
 
 # pull in data from API and insert into database.
-DB_NAME = getattr(config, "DB_NAME", "postgres")
+DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 engine = sqla.create_engine(
-    f"postgresql+psycopg2://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 5432)}/{DB_NAME}"
-    f"?sslmode={getattr(config, 'DB_SSLMODE', 'require')}"
+    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
+    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{DB_NAME}"
 )
 
 # Execute one pull + insert
@@ -64,15 +63,15 @@ for s in data:
 station_insert = sqla.text("""
 INSERT INTO station (number, contract_name, name, address, lat, lng, banking, bonus, bike_stands)
 VALUES (:number, :contract_name, :name, :address, :lat, :lng, :banking, :bonus, :bike_stands)
-ON CONFLICT (number) DO UPDATE SET
-    contract_name = EXCLUDED.contract_name,
-    name = EXCLUDED.name,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    banking = EXCLUDED.banking,
-    bonus = EXCLUDED.bonus,
-    bike_stands = EXCLUDED.bike_stands;
+ON DUPLICATE KEY UPDATE
+    contract_name = VALUES(contract_name),
+    name = VALUES(name),
+    address = VALUES(address),
+    lat = VALUES(lat),
+    lng = VALUES(lng),
+    banking = VALUES(banking),
+    bonus = VALUES(bonus),
+    bike_stands = VALUES(bike_stands);
 """)
 
 availability_insert = sqla.text("""

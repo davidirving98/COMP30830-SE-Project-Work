@@ -17,7 +17,7 @@ if _spec is None or _spec.loader is None:
 config = module_from_spec(_spec)
 _spec.loader.exec_module(config)  # api info should not be shown in public
 
-output_dir = Path("data/dublinbike_status")
+output_dir = Path(config.FOLDER_PATH)
 output_dir.mkdir(parents=True, exist_ok=True)
 
 def fetch_and_save_once():

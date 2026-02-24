@@ -2,6 +2,7 @@ import sqlalchemy as sqla
 import sys
 from pathlib import Path
 
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -9,20 +10,11 @@ if str(PROJECT_ROOT) not in sys.path:
 import config
 
 
+# config  provides database connection info and api keys, and also defines paths for local data storage (if needed)
 def _build_connection_string():
-    if config.DB_DIALECT == "mysql":
-        return (
-            f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
-            f"@{config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}"
-        )
-    if config.DB_DIALECT in {"postgresql", "postgres"}:
-        return (
-            f"postgresql+psycopg2://{config.DB_USER}:{config.DB_PASSWORD}"
-            f"@{config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}"
-            f"?sslmode={config.DB_SSLMODE}"
-        )
-    raise ValueError(
-        f"Unsupported DB_DIALECT '{config.DB_DIALECT}'. Use mysql or postgresql."
+    return (
+        f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
+        f"@{config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}"
     )
 
 
