@@ -62,3 +62,6 @@ OPENWEATHER_CITY = "Dublin"
 # Optional local data paths
 FOLDER_PATH = str(DATA_DIR / "dublinbike_status")
 OPENWEATHER_FOLDER_PATH = str(DATA_DIR / "openweather")
+
+# Google Maps API configuration (read from OS environment variables)
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")

@@ -5,9 +5,72 @@ body {
   color: #222;
 }
 
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background: #ffffff;
+  border-bottom: 1px solid #ddd;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+}
+
+footer {
+  text-align: center;
+  padding: 10px;
+  background: #eee;
+  margin-top: 30px;
+}
+
+.top-bar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: 60px;
+
+  background: #f4f5f7;
+  border-bottom: 1px solid #ddd;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+.weather-center {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.weather-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #333;
+}
+
+.weather-right {
+  color: #666;
+  font-size: 13px;
+}
+
+#map {
+  width: 100%;
+  height: calc(100vh - 120px);
+  margin-top: 60px;
+}
+
 .container {
   max-width: 760px;
-  margin: 48px auto;
+  margin: 32px auto;
   padding: 24px;
   background: #fff;
   border: 1px solid #ddd;
@@ -41,4 +104,346 @@ button {
 
 button:hover {
   background: #0959cc;
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: white;
+  border-top: 1px solid #ddd;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  z-index: 1000;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #555;
+  font-size: 14px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.green {
+  background: #22c55e;
+}
+
+.bottom-search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.bottom-search input {
+  width: 300px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.bottom-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.bottom-right {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.bottom-right button {
+  background: #eef4ff;
+  color: #2563eb;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.35);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  width: 420px;
+  max-width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close {
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.account-body {
+  margin-top: 10px;
+}
+
+.profile-icon {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.account-card {
+  background: #f4f6f7;
+  border-radius: 18px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.value {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.account-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.stat-box {
+  flex: 1;
+  background: #e9edf6;
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.stat-box .green {
+  background: #dfeee4;
+}
+
+.stat-box .big {
+  font-size: 36px;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.stat-box span:last-child {
+  font-size: 14px;
+  color: #5b6472;
+}
+
+.stat-box img {
+  width: 24px;
+  margin-bottom: 6px;
+}
+
+.stat-box .station {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+#account-btn {
+  background: #eef4ff;
+  color: #2563eb;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+#account-btn img{
+  width: 18px;
+}
+
+.account-card .payment img {
+  height: 32px;
+  width: auto;
+}
+
+.payment-icons{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.payment-icons img{
+  height: auto;
+  width: 80px;
+}
+
+.search-container{
+  position: relative;
+  width: 300px;
+}
+
+.search-results{
+  position: absolute;
+  bottom: 40px;
+  width: 100%;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  z-index: 2000;
+}
+
+.search-item{
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.search-item:hover{
+  background: #f3f4f6;
+}
+.welcome-content{
+  background: white;
+  width: 500px;
+  max-width: 90%;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.welcome-header{
+  background: linear-gradient(90deg,#3b82f6,#2563eb);
+  color: white;
+  padding: 18px 22px;
+  font-size: 22px;
+  font-weight: 600;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.welcome-body{
+  padding: 24px;
+}
+
+.welcome-step{
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.welcome-step p{
+  margin: 4px 0 0;
+  color: #555;
+}
+
+.icon{
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.icon.blue{
+  background: #dbeafe;
+}
+
+.icon.green{
+  background: #dcfce7;
+}
+
+.icon.purple{
+  background: #ede9fe;
+}
+
+.marker-box{
+  background: #f3f4f6;
+  padding: 16px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.marker-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.start-btn{
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
 }

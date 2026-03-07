@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, render_template
 import requests
 import os
+import sys
+sys.path.append("..")
+import config
 from openweather import get_weather
 from jcdecaux import get_stations, get_station
 from bikeinfo_SQL import (
@@ -13,8 +16,8 @@ app = Flask(__name__)
 
 
 @app.route("/")
-def home():
-    return render_template("home.html")
+def index():
+    return render_template("index.html", apikey=config.GOOGLE_MAPS_API_KEY)
 
 
 @app.route("/stations")
