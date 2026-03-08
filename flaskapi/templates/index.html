@@ -11,14 +11,15 @@
 
 <body>
   
+<!-- Header display (location and weather) -->  
 <header class="top-bar">
 
   <div class="weather-left">
     <span class="location">Dublin City Centre</span>
   </div>
 
+<!-- Weather displays -->
   <div class="weather-center">
-
     <div class="weather-item">
       ☀️ <span>12°C</span>
     </div>
@@ -45,26 +46,10 @@
   
   
 <div id="map"></div>
-  <!-- Just commenting this out for now! (David)
-  <main class="container">
-
-    <p>Bike + Weather API is running!</p>
-    <p><a href="/stations">All stations from JCDecaux API</a></p>
-    <p><a href="/weather">Current weather from OpenWeather API</a></p>
-    <p><a href="/stations_SQL">All stations on database</a></p>
-    <p><a href="/availability_SQL">All availability database</a></p>
-
-    <h2>Station Info</h2>
-    <div class="row">
-      <input id="sid" type="number" min="1" max="115" placeholder="station id (1-115)" />
-      <button type="button" onclick="goToStation()">Go</button>
-    </div>
-  </main>
-
-  -->
 
 <footer>WheelyWise</footer>
 
+<!-- Redirecting user to API endpoint for a station -->
   <script>
     function goToStation() {
       const id = Number(document.getElementById("sid").value);
@@ -78,12 +63,11 @@
   
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
   
+<!-- Call initMap() once loaded -->
 <script src="https://maps.googleapis.com/maps/api/js?key={{apikey}}&callback=initMap&v=weekly" defer> </script>
 
   
-  
-  
-  <!-- Bottom Bar -->
+  <!-- Bottom Bar (logo, stats, search, account profile) -->
 <div class="bottom-bar">
 
   <!-- Left side -->
@@ -119,14 +103,14 @@
       type="text"
       placeholder="Search stations..."
     >
-
+  <!-- Results dynamically inserted by JS -->
     <div id="search-results" class="search-results"></div>
 
   </div>
 
 </div>
 
-  <!-- Right side -->
+  <!-- Right side (account) -->
   <div class="bottom-right">
     <button id="account-btn">
       <img src="{{ url_for('static', filename='icons/user.svg') }}" width="16">
@@ -136,6 +120,7 @@
 
 </div> 
   
+<!-- Welcome page with website instructions -->
 <div id="welcome-modal" class="modal">
   
   <div class="welcome-content">
@@ -187,12 +172,13 @@
     </div>
     </div>  
     
+    <!-- Button to close the pop-up -->
     <button id="start-btn" class="start-btn">Get Started</button>
     </div>
     </div>
   </div>  
 
-  
+<!-- Display user profile info -->
 <div id="account-modal" class="modal">
 
   <div class="modal-content">
