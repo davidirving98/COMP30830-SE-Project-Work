@@ -2,7 +2,11 @@ from flask import Flask, jsonify, render_template
 import requests
 import os
 import sys
-sys.path.append("..")
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 import config
 from openweather import get_weather
 from jcdecaux import get_stations, get_station
