@@ -32,12 +32,25 @@ with engine.begin() as conn:
             CONSTRAINT fk_station_number FOREIGN KEY (number) REFERENCES station(number) ON DELETE CASCADE
         )
     """))
-    has_index = conn.execute(
-        sqla.text("SHOW INDEX FROM availability WHERE Key_name = 'idx_number_time'")
+    has_unique = conn.execute(
+        sqla.text(
+            "SHOW INDEX FROM availability WHERE Key_name = 'uq_availability_number_last_update'"
+        )
     ).first()
-    if not has_index:
+    if not has_unique:
+        conn.execute(sqla.text("""
+            DELETE a
+            FROM availability a
+            JOIN availability b
+              ON a.number = b.number
+             AND a.last_update <=> b.last_update
+             AND a.id > b.id
+        """))
         conn.execute(
-            sqla.text("CREATE INDEX idx_number_time ON availability (number, last_update)")
+            sqla.text(
+                "CREATE UNIQUE INDEX uq_availability_number_last_update "
+                "ON availability (number, last_update)"
+            )
         )
 
 input_path = Path(config.FOLDER_PATH)
@@ -85,6 +98,10 @@ station_insert = sqla.text("""
 availability_insert = sqla.text("""
     INSERT INTO availability (number, available_bike_stands, available_bikes, status, last_update)
     VALUES (:number, :available_bike_stands, :available_bikes, :status, :last_update)
+    ON DUPLICATE KEY UPDATE
+        available_bike_stands = VALUES(available_bike_stands),
+        available_bikes = VALUES(available_bikes),
+        status = VALUES(status)
 """)
 
 with engine.begin() as conn:

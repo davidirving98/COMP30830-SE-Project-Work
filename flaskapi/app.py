@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, render_template
+
 import requests
 import os
 import sys
@@ -9,11 +10,15 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 import config
 from openweather import get_weather
-from jcdecaux import get_stations, get_station
+
+from jcdecaux import get_stations, get_station, fetch_stations_raw
 from bikeinfo_SQL import (
     get_stations_sql,
     get_availability_sql,
     get_station_sql,
+    get_station_history_sql,
+    save_snapshot,
+    get_latest_stations_view,
 )
 
 app = Flask(__name__)
@@ -26,12 +31,19 @@ def index():
 
 @app.route("/stations")
 def stations():
-    data = get_stations()
+    try:
+        # when front page loads, fetch latest data from API and save to DB, then return latest view data
+        raw_data = fetch_stations_raw()
+        if raw_data is None:
+            return jsonify({"error": "Bike API unavailable"}), 500
 
-    if data is None:
-        return jsonify({"error": "Bike API unavailable"}), 500
-
-    return jsonify(data)
+        # save raw data from API to DB
+        save_snapshot(raw_data)
+        # return latest view data from DB
+        data = get_latest_stations_view()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": f"/stations failed: {str(e)}"}), 500
 
 
 @app.route("/weather")
@@ -56,6 +68,7 @@ def station_info(station_id):
     return jsonify({"station": station, "weather": weather})
 
 
+# The following endpoints are for testing the SQL database connection and queries.
 @app.route("/stations_SQL")
 def stations_sql():
     try:
@@ -64,6 +77,7 @@ def stations_sql():
         return jsonify({"error": f"Data not found: {str(e)}"}), 500
 
 
+# This endpoint returns the current availability of bikes and stands for all stations.
 @app.route("/availability_SQL")
 def availability_sql():
     try:
@@ -72,6 +86,7 @@ def availability_sql():
         return jsonify({"error": str(e)}), 500
 
 
+# This endpoint returns detailed information about a specific station
 @app.route("/stations_SQL/<int:station_id>/info")
 def station_sql_info(station_id):
     try:
@@ -79,6 +94,15 @@ def station_sql_info(station_id):
         if station is None:
             return jsonify({"error": "Station not found"}), 404
         return jsonify(station)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# This endpoint returns the historical availability data for a specific station.
+@app.route("/station/<int:station_id>/history")
+def station_history(station_id):
+    try:
+        return jsonify(get_station_history_sql(station_id))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

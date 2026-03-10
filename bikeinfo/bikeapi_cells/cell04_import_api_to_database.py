@@ -76,7 +76,11 @@ ON DUPLICATE KEY UPDATE
 
 availability_insert = sqla.text("""
 INSERT INTO availability (number, available_bike_stands, available_bikes, status, last_update)
-VALUES (:number, :available_bike_stands, :available_bikes, :status, :last_update);
+VALUES (:number, :available_bike_stands, :available_bikes, :status, :last_update)
+ON DUPLICATE KEY UPDATE
+    available_bike_stands = VALUES(available_bike_stands),
+    available_bikes = VALUES(available_bikes),
+    status = VALUES(status);
 """)
 
 with engine.begin() as conn:
