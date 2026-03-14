@@ -10,41 +10,36 @@ function addMarkers(stations) {
     for (const station of stations) {
         // Assign a colour to each marker based on availability
         const color = getStationColor(station);
-        
+
         const icon = {
             url: `/static/icons/bike-${color}.svg`,
             scaledSize: new google.maps.Size(28, 28)
         };
-        
+
         // Create the Google Maps marker
         const marker = new google.maps.Marker({
             position: {
-                lat: station.lat,
-                lng: station.lng,
+                lat: Number(station.lat),
+                lng: Number(station.lng),
             },
             map: map,
             title: station.name,
             station_number: station.number,
             icon: icon,
         });
-        
+
         // Save marker reference for later searches
         station.marker = marker;
 
         // Show the info window upon click
         marker.addListener("click", () => {
-
-            // Define container for the chart
-            const chartContainer = document.createElement('div');
-            chartContainer.style.width = '300px';
-            chartContainer.style.height = '200px';
-
             // Info window content (html)
             const content = `
                 <div>
                     <h3>${station.name}</h3>
                     <p><strong>Available Bikes:</strong> ${station.available_bikes || "N/A"}</p>
-                    <div id="chart_div_${station.number}" style="width: 300px; height: 200px;"></div>
+                    <p><strong style="color:#d4af37;">Free Stands:</strong> <span style="color:#d4af37;">${station.available_stands || "N/A"}</span></p>
+                    <div id="chart_div_${station.number}" style="width: 320px; height: 220px;"></div>
                 </div>
             `;
 
@@ -52,26 +47,67 @@ function addMarkers(stations) {
             infoWindow.setContent(content);
             infoWindow.open(map, marker);
 
-            // Draw the availability chart once the library is ready
-            google.charts.setOnLoadCallback(() => {
+            // Draw a time-series chart (last 5 records) once the library is ready
+            google.charts.setOnLoadCallback(async () => {
                 const chartData = new google.visualization.DataTable();
-                chartData.addColumn('string', 'Type');
-                chartData.addColumn('number', 'Count');
-                
-                chartData.addRows([
-                    ['Available Bikes', station.available_bikes], 
-                    ['Free Stands', station.available_stands], 
-                ]);
+                chartData.addColumn('datetime', 'Time');
+                chartData.addColumn('number', 'Available Bikes');
+                chartData.addColumn('number', 'Free Stands');
+
+                let historyRows = [];
+                try {
+                    const response = await fetch(`/station/${station.number}/history`);
+                    if (!response.ok) {
+                        throw new Error(`history API failed: ${response.status}`);
+                    }
+                    const history = await response.json();
+                    historyRows = history
+                        .map((item) => {
+                            const ts = new Date(String(item.last_update).replace(" ", "T"));
+                            if (!Number.isFinite(ts.getTime())) {
+                                return null;
+                            }
+                            return [
+                                ts,
+                                Number(item.available_bikes ?? 0),
+                                Number(item.available_bike_stands ?? 0),
+                            ];
+                        })
+                        .filter(Boolean);
+                } catch (err) {
+                    console.error("Error fetching station history:", err);
+                }
+
+                if (historyRows.length === 0) {
+                    historyRows = [[
+                        new Date(),
+                        Number(station.available_bikes ?? 0),
+                        Number(station.available_stands ?? 0),
+                    ]];
+                }
+
+                chartData.addRows(historyRows);
 
                 const options = {
-                    title: 'Station Overview',
+                    title: 'Station Time Series Overview',
                     legend: { position: 'bottom' },
-                    width: 300,
-                    height: 200,
+                    curveType: 'function',
+                    series: {
+                        1: { color: '#d4af37' },
+                    },
+                    hAxis: {
+                        title: 'Time',
+                        format: 'HH:mm',
+                    },
+                    vAxis: {
+                        title: 'Count',
+                    },
+                    width: 320,
+                    height: 220,
                 };
 
-                // Draw the bar chart
-                const chart = new google.visualization.BarChart(
+                // Draw the line chart
+                const chart = new google.visualization.LineChart(
                     document.getElementById(`chart_div_${station.number}`)
                 );
 
@@ -85,28 +121,31 @@ function getStations() {
     // Send a request to the "/stations" endpoint in our flask function to retrieve station data
     fetch("/stations")
         .then((response) => {
+            if (!response.ok) {
+                throw new Error(`/stations failed: ${response.status}`);
+            }
             return response.json();
         })
         .then((data) => {
-    console.log("fetch response", typeof data);
+            console.log("fetch response", typeof data);
 
-    // Store stations globally and create map markers
-    stations = data;
-    addMarkers(stations);
+            // Store stations globally and create map markers
+            stations = data;
+            addMarkers(stations);
 
-    // Calculate summary stats for the bottom bar
-    let totalBikes = data.reduce((sum, s) => sum + s.available_bikes, 0);
+            // Calculate summary stats for the bottom bar
+            let totalBikes = data.reduce((sum, s) => sum + s.available_bikes, 0);
 
-    let openStations = data.filter(
-        s => s.available_bikes + s.available_stands > 0
-    ).length;
+            let openStations = data.filter(
+                s => s.available_bikes + s.available_stands > 0
+            ).length;
 
-    document.getElementById("bikes-available").innerText =
-        totalBikes + " Bikes Available";
+            document.getElementById("bikes-available").innerText =
+                totalBikes + " Bikes Available";
 
-    document.getElementById("stations-open").innerText =
-        openStations + " Stations Open";
-})
+            document.getElementById("stations-open").innerText =
+                openStations + " Stations Open";
+        })
         .catch((error) => {
             console.error("Error fetching stations data:", error);
         });
@@ -120,7 +159,7 @@ function initMap() {
         zoom: 14,
         center: dublin,
     });
-    
+
     // Single reusable information window
     infoWindow = new google.maps.InfoWindow();
 
@@ -151,18 +190,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const welcomeModal = document.getElementById("welcome-modal");
     const closeWelcome = document.getElementById("close-welcome");
     const startBtn = document.getElementById("start-btn");
-    
+
     // Show modal when page first loads only
-   if(!localStorage.getItem("wheelyWelcomeSeen")){
-    welcomeModal.style.display = "flex";
-    localStorage.setItem("wheelyWelcomeSeen", true);
-   }
-    
+    if (!localStorage.getItem("wheelyWelcomeSeen")) {
+        welcomeModal.style.display = "flex";
+        localStorage.setItem("wheelyWelcomeSeen", true);
+    }
+
     // Close modal
-    function closeModal(){
+    function closeModal() {
         welcomeModal.style.display = "none";
     }
-    
+
     closeWelcome.addEventListener("click", closeModal);
     startBtn.addEventListener("click", closeModal);
 });
@@ -174,15 +213,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const resultsContainer = document.getElementById("search-results");
 
     // Listen for user typing in the search box
-    searchInput.addEventListener("input", function(){
+    searchInput.addEventListener("input", function () {
 
         const search = this.value.toLowerCase();
-        
+
         // Clear previous results
         resultsContainer.innerHTML = "";
 
         // Hide the dropdown if search is empty
-        if(search.length === 0){
+        if (search.length === 0) {
             resultsContainer.style.display = "none";
             return;
         }
@@ -194,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         // Show first 8 matches in the dropdown menu
-        matches.slice(0,8).forEach(station => {
+        matches.slice(0, 8).forEach(station => {
 
             const item = document.createElement("div");
             item.className = "search-item";
@@ -208,12 +247,12 @@ document.addEventListener("DOMContentLoaded", () => {
             item.addEventListener("click", () => {
 
                 map.panTo({
-                    lat: station.lat,
-                    lng: station.lng
+                    lat: Number(station.lat),
+                    lng: Number(station.lng)
                 });
 
                 map.setZoom(16);
-                
+
                 // Trigger marker click to open info window
                 google.maps.event.trigger(station.marker, "click");
 
@@ -230,12 +269,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Close dropdown when clicking elsewhere
     document.addEventListener("click", (e) => {
-        if(!e.target.closest(".search-container")){
+        if (!e.target.closest(".search-container")) {
             resultsContainer.style.display = "none";
         }
     });
 
-}); 
+});
 
 // Account modal controls
 const accountBtn = document.getElementById("account-btn");

@@ -10,44 +10,43 @@
 </head>
 
 <body>
-  
-<!-- Header display (location and weather) -->  
-<header class="top-bar">
 
-  <div class="weather-left">
-    <span class="location">Dublin City Centre</span>
-  </div>
+  <header class="top-bar">
 
-<!-- Weather displays -->
-  <div class="weather-center">
-    <div class="weather-item">
-      ☀️ <span>12°C</span>
+    <div class="weather-left">
+      <span class="location">Dublin City Centre</span>
     </div>
 
-    <div class="weather-item">
-      Partly Cloudy
+    <div class="weather-center">
+
+      <div class="weather-item">
+        ☀️ <span>12°C</span>
+      </div>
+
+      <div class="weather-item">
+        Partly Cloudy
+      </div>
+
+      <div class="weather-item">
+        💨 15 km/h
+      </div>
+
+      <div class="weather-item">
+        💧 68%
+      </div>
+
     </div>
 
-    <div class="weather-item">
-      💨 15 km/h
+    <div class="weather-right">
+      Last updated: 17:09
     </div>
 
-    <div class="weather-item">
-      💧 68%
-    </div>
+  </header>
 
-  </div>
 
-  <div class="weather-right">
-    Last updated: 17:09
-  </div>
+  <div id="map"></div>
 
-</header> 
-  
-  
-<div id="map"></div>
-
-<footer>WheelyWise</footer>
+  <footer>WheelyWise</footer>
 
 <!-- Redirecting user to API endpoint for a station -->
   <script>
@@ -60,205 +59,201 @@
       window.location.href = `/stations_SQL/${id}/info`;
     }
   </script>
-  
-<script src="{{ url_for('static', filename='js/index.js') }}"></script>
-  
-<!-- Call initMap() once loaded -->
-<script src="https://maps.googleapis.com/maps/api/js?key={{apikey}}&callback=initMap&v=weekly" defer> </script>
 
-  
-  <!-- Bottom Bar (logo, stats, search, account profile) -->
-<div class="bottom-bar">
+  <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
-  <!-- Left side -->
-  <div class="bottom-left">
+  <script src="https://maps.googleapis.com/maps/api/js?key={{apikey}}&callback=initMap&v=weekly" defer> </script>
 
-    <div class="logo">
-      🚲 <span>WheelyWise</span>
-    </div>
 
-    <div class="stats">
 
-      <div class="stat">
-        <span class="dot green"></span>
-        <span id="stations-open">0 Stations Open</span>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+
+    <!-- Left side -->
+    <div class="bottom-left">
+
+      <div class="logo">
+        🚲 <span>WheelyWise</span>
       </div>
 
-      <div class="stat">
-        <img src="{{ url_for('static', filename='icons/bike.svg') }}" width="16">
-        <span id="bikes-available">0 Bikes Available</span>
-      </div>
+      <div class="stats">
 
-    </div>
-
-  </div>
-
-  <!-- Search -->
-<div class="bottom-search">
-
-  <div class="search-container">
-
-    <input
-      id="station-search"
-      type="text"
-      placeholder="Search stations..."
-    >
-  <!-- Results dynamically inserted by JS -->
-    <div id="search-results" class="search-results"></div>
-
-  </div>
-
-</div>
-
-  <!-- Right side (account) -->
-  <div class="bottom-right">
-    <button id="account-btn">
-      <img src="{{ url_for('static', filename='icons/user.svg') }}" width="16">
-      Account
-    </button>
-  </div>
-
-</div> 
-  
-<!-- Welcome page with website instructions -->
-<div id="welcome-modal" class="modal">
-  
-  <div class="welcome-content">
-  
-  <div class="welcome-header">
-    🚲 Welcome to WheelyWise
-    <span id="close-welcome" class ="close">&times;</span>
-    </div>
-  <div class="welcome-body">
-    <p>
-    WheelyWise makes it easy to find and rent bikes across Dublin City Centre.
-    Here's how it works:
-    </p>
-    
-    <div class="welcome-step">
-      <div class="icon blue">📍</div>
-      <div>
-        <strong>Find a Station</strong>
-        <p>Browse the map to see bike stations near you.</p>
-      </div>
-    </div>
-    
-    <div class="welcome-step">
-      <div class="icon green">🔍</div>
-      <div>
-        <strong>Check Availability</strong>
-        <p>Click any station marker to see real-time bikes and docks, or search for them.</p>
-      </div>
-    </div>
-    
-    <div class="welcome-step">
-      <div class="icon purple">🚲</div>
-      <div>
-        <strong>Book Your Bike</strong>
-        <p>Reserve your bike and start your journey!</p>
-      </div>
-    </div>
-    
-    <div class="marker-box">
-    
-      <strong>Marker Colours</strong>
-    
-    <div class="marker-grid">
-      <div>🔵 Bikes and stands available</div>
-      <div>🔴 Stands available but no bikes available </div>
-      <div>🟢 Bikes available but no stands available</div>
-      <div>⚪ Station closed or offline</div>    
-      
-    </div>
-    </div>  
-    
-    <!-- Button to close the pop-up -->
-    <button id="start-btn" class="start-btn">Get Started</button>
-    </div>
-    </div>
-  </div>  
-
-<!-- Display user profile info -->
-<div id="account-modal" class="modal">
-
-  <div class="modal-content">
-
-    <div class="modal-header">
-      <h2>My Account</h2>
-      <span id="close-account" class="close">&times;</span>
-    </div>
-
-    <div class="account-body">
-
-      <div class="profile-icon">
-        <img src="{{ url_for('static', filename='icons/user.svg') }}" width="60">
-      </div>
-
-      <div class="account-card">
-        <span class="label">Name</span>
-        <span class="value">Michael O'Brien</span>
-      </div>
-
-      <div class="account-card">
-        <span class="label">Email</span>
-        <span class="value">michael.obrien@email.ie</span>
-      </div>
-
-      <div class="account-card">
-        <span class="label">Phone</span>
-        <span class="value">+353 85 123 4567</span>
-      </div>
-      
-      <div class="account-card payment">
-      <span class="label">Payment Methods</span>
-      <div class="payment-icons">
-        <img src="{{ url_for('static', filename='icons/apple-pay.svg') }}">
-        <img src="{{ url_for('static', filename='icons/google-pay.svg') }}">
-        </div>
-      </div>
-
-      <div class="account-card">
-        <span class="label">Member Since</span>
-        <span class="value">January 2023</span>
-      </div>
-
-      <div class="account-stats">
-        <div class="stat-box">
-          <span class="big">127</span>
-          <span>Total Rides</span>
+        <div class="stat">
+          <span class="dot green"></span>
+          <span id="stations-open">0 Stations Open</span>
         </div>
 
-        <div class="stat-box green">
-          <img src="{{ url_for('static', filename='icons/map-pin.svg') }}">
-          <span class="station">Trinity College</span>
-          <span>Favorite Station</span>
+        <div class="stat">
+          <img src="{{ url_for('static', filename='icons/bike.svg') }}" width="16">
+          <span id="bikes-available">0 Bikes Available</span>
         </div>
+
       </div>
 
-      <div class="account-buttons">
-        <button>Edit Profile</button>
-        <button class="secondary" id="close-account-2">Close</button>
+    </div>
+
+    <!-- Search -->
+    <div class="bottom-search">
+
+      <div class="search-container">
+
+        <input id="station-search" type="text" placeholder="Search stations...">
+
+        <div id="search-results" class="search-results"></div>
+
+      </div>
+
+    </div>
+
+    <!-- Right side -->
+    <div class="bottom-right">
+      <button id="account-btn">
+        <img src="{{ url_for('static', filename='icons/user.svg') }}" width="16">
+        Account
+      </button>
+    </div>
+
+  </div>
+
+  <div id="welcome-modal" class="modal">
+
+    <div class="welcome-content">
+
+      <div class="welcome-header">
+        🚲 Welcome to WheelyWise
+        <span id="close-welcome" class="close">&times;</span>
+      </div>
+      <div class="welcome-body">
+        <p>
+          WheelyWise makes it easy to find and rent bikes across Dublin City Centre.
+          Here's how it works:
+        </p>
+
+        <div class="welcome-step">
+          <div class="icon blue">📍</div>
+          <div>
+            <strong>Find a Station</strong>
+            <p>Browse the map to see bike stations near you.</p>
+          </div>
+        </div>
+
+        <div class="welcome-step">
+          <div class="icon green">🔍</div>
+          <div>
+            <strong>Check Availability</strong>
+            <p>Click any station marker to see real-time bikes and docks, or search for them.</p>
+          </div>
+        </div>
+
+        <div class="welcome-step">
+          <div class="icon purple">🚲</div>
+          <div>
+            <strong>Book Your Bike</strong>
+            <p>Reserve your bike and start your journey!</p>
+          </div>
+        </div>
+
+        <div class="marker-box">
+
+          <strong>Marker Colours</strong>
+
+          <div class="marker-grid">
+            <div>🔵 Bikes and stands available</div>
+            <div>🔴 Stands available but no bikes available </div>
+            <div>🟢 Bikes available but no stands available</div>
+            <div>⚪ Station closed or offline</div>
+
+          </div>
+        </div>
+
+        <button id="start-btn" class="start-btn">Get Started</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="account-modal" class="modal">
+
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h2>My Account</h2>
+        <span id="close-account" class="close">&times;</span>
+      </div>
+
+      <div class="account-body">
+
+        <div class="profile-icon">
+          <img src="{{ url_for('static', filename='icons/user.svg') }}" width="60">
+        </div>
+
+        <div class="account-card">
+          <span class="label">Name</span>
+          <span class="value">Michael O'Brien</span>
+        </div>
+
+        <div class="account-card">
+          <span class="label">Email</span>
+          <span class="value">michael.obrien@email.ie</span>
+        </div>
+
+        <div class="account-card">
+          <span class="label">Phone</span>
+          <span class="value">+353 85 123 4567</span>
+        </div>
+
+        <div class="account-card payment">
+          <span class="label">Payment Methods</span>
+          <div class="payment-icons">
+            <img src="{{ url_for('static', filename='icons/apple-pay.svg') }}">
+            <img src="{{ url_for('static', filename='icons/google-pay.svg') }}">
+          </div>
+        </div>
+
+        <div class="account-card">
+          <span class="label">Member Since</span>
+          <span class="value">January 2023</span>
+        </div>
+
+        <div class="account-stats">
+          <div class="stat-box">
+            <span class="big">127</span>
+            <span>Total Rides</span>
+          </div>
+
+          <div class="stat-box green">
+            <img src="{{ url_for('static', filename='icons/map-pin.svg') }}">
+            <span class="station">Trinity College</span>
+            <span>Favorite Station</span>
+          </div>
+        </div>
+
+        <div class="account-buttons">
+          <button>Edit Profile</button>
+          <button class="secondary" id="close-account-2">Close</button>
+        </div>
+
       </div>
 
     </div>
 
   </div>
 
-</div>
- 
-<script>
-document.getElementById("account-btn").onclick = function() {
-  document.getElementById("account-modal").style.display = "flex";
-};
+  <script>
+    document.getElementById("account-btn").onclick = function () {
+      document.getElementById("account-modal").style.display = "flex";
+    };
 
-document.getElementById("close-account").onclick = function() {
-  document.getElementById("account-modal").style.display = "none";
-};
+    document.getElementById("close-account").onclick = function () {
+      document.getElementById("account-modal").style.display = "none";
+    };
 
-document.getElementById("close-account-2").onclick = function() {
-  document.getElementById("account-modal").style.display = "none";
-};
-</script>
+    document.getElementById("close-account-2").onclick = function () {
+      document.getElementById("account-modal").style.display = "none";
+    };
+  </script>
 
 </body>
+
 </html>
