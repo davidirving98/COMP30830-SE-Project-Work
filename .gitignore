@@ -207,3 +207,12 @@ marimo/_lsp/
 __marimo__/
 
 # Project secrets
+
+.idea/
+.DS_Store
+.env
+
+
+
+
+

@@ -13,28 +13,29 @@
 
   <header class="top-bar">
 
+
+    <!-- Weather displays -->
+
     <div class="weather-left">
       <span class="location">Dublin City Centre</span>
     </div>
 
     <div class="weather-center">
+        <div class="weather-item">
+          ☀️ <span id="temperature">--</span>
+        </div>
 
-      <div class="weather-item">
-        ☀️ <span>12°C</span>
-      </div>
+        <div class="weather-item">
+            <span id="weather">Loading...</span>
+        </div>
 
-      <div class="weather-item">
-        Partly Cloudy
-      </div>
+        <div class="weather-item">
+            💨 <span id="wind_speed">--</span>
+        </div>
 
-      <div class="weather-item">
-        💨 15 km/h
-      </div>
-
-      <div class="weather-item">
-        💧 68%
-      </div>
-
+        <div class="weather-item">
+            💧 <span id="humidity">--</span>
+        </div>
     </div>
 
     <div class="weather-right">
@@ -42,6 +43,7 @@
     </div>
 
   </header>
+
 
 
   <div id="map"></div>
@@ -249,10 +251,29 @@
       document.getElementById("account-modal").style.display = "none";
     };
 
+<<<<<<< HEAD
+document.getElementById("close-account-2").onclick = function() {
+  document.getElementById("account-modal").style.display = "none";
+};
+
+// weather
+async function loadCurrentWeather() {
+    const response = await fetch("/weather");
+    const data = await response.json();
+
+    document.getElementById("temperature").textContent = data.temperature + "°C";
+    document.getElementById("weather").textContent = data.weather;
+    document.getElementById("wind_speed").textContent = data.wind_speed + "m/s";
+    document.getElementById("humidity").textContent = data.humidity + "%";
+}
+loadCurrentWeather();
+</script>
+=======
     document.getElementById("close-account-2").onclick = function () {
       document.getElementById("account-modal").style.display = "none";
     };
   </script>
+>>>>>>> origin/main
 
 </body>
 
