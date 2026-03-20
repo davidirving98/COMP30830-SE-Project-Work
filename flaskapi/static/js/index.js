@@ -5,6 +5,8 @@ let stations = [];
 let selectedStart = null;
 let selectedEnd = null;
 let currentStation = null;
+let activeRenderers = [];
+let clickMarkers = [];
 
 // Load Google Charts once to speed up
 google.charts.load('current', { packages: ['corechart'] });
@@ -162,41 +164,86 @@ function getStations() {
 }
 
 // Initialize and add the map
-function initMap() {
-    const dublin = { lat: 53.35014, lng: -6.266155 };
+    function initMap() {
+        const dublin = { lat: 53.35014, lng: -6.266155 };
+        
+        const dublinBounds = {
+        north: 53.45,
+        south: 53.25,
+        west: -6.45,
+        east: -6.05
+        };
 
-    map = new google.maps.Map(document.getElementById("map"), {
+        map = new google.maps.Map(document.getElementById("map"), {
         zoom: 14,
         center: dublin,
+        restriction: {
+            latLngBounds: dublinBounds,
+            strictBounds: true
+        }  
     });
+        
+    let clickStage = "start";
+
+    map.addListener("click", (e) => {
+    infoWindow.close();
+
+    const clickedLocation = {
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng()
+    };
+    
+    // Clear old markers
+    if (clickMarkers.length >= 2) {
+        clickMarkers.forEach(m => m.setMap(null));
+        clickMarkers = [];
+    }
+
+    // Add marker
+    const marker = new google.maps.Marker({
+        position: clickedLocation,
+        map: map
+    });
+
+clickMarkers.push(marker);
+
+    clickMarkers.push(marker);
+
+    if (clickStage === "start") {
+        selectedStart = clickedLocation;
+        document.getElementById("start-input").value = "Selected on map";
+        alert("Now select your destination");
+        clickStage = "end";
+    } else {
+        selectedEnd = clickedLocation;
+        document.getElementById("end-input").value = "Selected on map";
+        clickStage = "start";
+
+        calculateSmartRoute(selectedStart, selectedEnd);
+    }
+});
 
     // Single reusable information window
     infoWindow = new google.maps.InfoWindow();
     
     // Route Mapping
     directionsService = new google.maps.DirectionsService();
-    directionsRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers: false, // Keep the default markers
-        polylineOptions: {
-            strokeColor: "#2563eb",
-            strokeWeight: 6,
-            strokeOpacity: 0.9
-        }
-    });
-    
-    directionsRenderer.setMap(map);
-
-    // Close any open station info window when you click elsewhere
-    map.addListener("click", () => {
-        infoWindow.close();
-        resetRoute();
-    });
 
     // Load station data
     getStations();
     
     initAutocomplete();
 }
+
+function isWithinDublin(location) {
+    return (
+        location.lat >= 53.25 &&
+        location.lat <= 53.45 &&
+        location.lng >= -6.45 &&
+        location.lng <= -6.05
+    );
+}
+
 // Function to decide the marker colour
 function getStationColor(station) {
 
@@ -331,90 +378,169 @@ function closeDrawer()  {
 }
 
 // Routing Function
-function calculateRoute(start, end) {
-    clearRoute();
+function calculateSmartRoute(start, end) {
+    infoWindow.close();
+    if (stations.length === 0) {
+        alert("Stations still loading...");
+        return;
+    }
     
-    directionsService.route({
-        origin: start,
-        destination: end,
-        travelMode: google.maps.TravelMode.BICYCLING
-    }, (result, status) => {
-        
-        if (status === "OK") {
-            directionsRenderer.setDirections(result);
-            
-            document.getElementById("route-actions").style.display = "block";
-            openDrawer();
-            
-            // Show Route info
-            const route = result.routes[0].legs[0];
-            
-            const distance = route.distance.text;
-            const duration = route.duration.text;
-            
-            const steps = result.routes[0].legs[0].steps;
-            
-            let directionsHTML = `<strong>🚲 ${distance} • ⏱️ ${duration}</strong><br><br>`;
-            
-            steps.forEach((step, i) => {
-                directionsHTML += `${i + 1}. ${step.instructions} (${step.distance.text})<br>`;
-            });
-            
-            document.getElementById("route-status").innerHTML = directionsHTML;
-            
-            map.fitBounds(result.routes[0].bounds);
-            
-            
+    if (!isWithinDublin(start) || !isWithinDublin(end)) {
+    alert("Route must be within Dublin");
+    return;
+}
+    
+    clearRoute();
 
-        } else {
-            alert("Could not calculate route, please try again.", status);
+    const startStation = getNearestStartStation(start);
+    const endStation = getNearestEndStation(end);
+
+    if (!startStation || !endStation) {
+        alert("No nearby stations available");
+        return;
+    }
+
+    const segments = [
+        {
+            origin: start,
+            destination: {
+                lat: Number(startStation.lat),
+                lng: Number(startStation.lng)
+            },
+            mode: google.maps.TravelMode.WALKING,
+            color: "#16a34a", // green
+            label: `🚶 Walk to ${startStation.name}`
+        },
+        {
+            origin: {
+                lat: Number(startStation.lat),
+                lng: Number(startStation.lng)
+            },
+            destination: {
+                lat: Number(endStation.lat),
+                lng: Number(endStation.lng)
+            },
+            mode: google.maps.TravelMode.BICYCLING,
+            color: "#2563eb", // blue
+            label: `🚲 Cycle to ${endStation.name}`
+        },
+        {
+            origin: {
+                lat: Number(endStation.lat),
+                lng: Number(endStation.lng)
+            },
+            destination: end,
+            mode: google.maps.TravelMode.WALKING,
+            color: "#16a34a",
+            label: "🚶 Walk to your destination"
         }
-    });
+    ];
+
+    drawSegments(segments);
 }
 
+function drawSegments(segments) {
+    let fullDirectionsHTML = "";
+    let totalDistance = 0;
+    let totalDuration = 0;
+    let completed = 0; // track finished calls
+
+    segments.forEach((segment) => {
+        const renderer = new google.maps.DirectionsRenderer({
+            suppressMarkers: false,
+            polylineOptions: {
+                strokeColor: segment.color,
+                strokeWeight: 5,
+                strokeOpacity: 0.9
+            }
+        });
+
+        renderer.setMap(map);
+        activeRenderers.push(renderer);
+
+        directionsService.route({
+            origin: segment.origin,
+            destination: segment.destination,
+            travelMode: segment.mode
+        }, (result, status) => {
+            if (status === "OK") {
+                renderer.setDirections(result);
+
+                const leg = result.routes[0].legs[0];
+
+                totalDistance += leg.distance.value;
+                totalDuration += leg.duration.value;
+                
+                // Segment header
+                fullDirectionsHTML += `
+                    <div style="
+                        font-weight:600;
+                        margin-top:12px;
+                        margin-bottom:6px;
+                        color:#111;
+                    ">
+                        ${segment.label}
+                    </div>
+                `;
+
+                // Steps (clean card UI)
+                leg.steps.forEach((step, i) => {
+                    fullDirectionsHTML += `
+                        <div style="
+                            margin:6px 0;
+                            padding:10px;
+                            background:#f9fafb;
+                            border-radius:8px;
+                            box-shadow:0 1px 3px rgba(0,0,0,0.05);
+                        ">
+                            <strong>${i + 1}.</strong> ${step.instructions}<br>
+                            <span style="color:#666; font-size:12px;">
+                                ${step.distance.text}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                fullDirectionsHTML += "<br>";
+
+                // count finished segments
+                completed++;
+
+                // ONLY update when ALL done
+                if (completed === segments.length) {
+                    const km = (totalDistance / 1000).toFixed(2);
+                    const mins = Math.round(totalDuration / 60);
+
+                    document.getElementById("route-status").innerHTML =
+                        `<strong>🚲 ${km} km • ⏱️ ${mins} mins</strong><br><br>` +
+                        fullDirectionsHTML;
+                }
+
+                map.fitBounds(result.routes[0].bounds);
+
+            } else {
+                console.error("Segment failed:", status);
+            }
+        });
+    });
+}
 // Clear route after use
 function clearRoute() {
-    if (directionsRenderer) {
-        directionsRenderer.setDirections({ routes: [] });
-    }
+    activeRenderers.forEach(renderer => {
+        renderer.setMap(null); // removes from map
+    });
+
+    activeRenderers = []; // reset array
+    
+    //clear click markers
+    clickMarkers.forEach(m => m.setMap(null));
+    clickMarkers = [];
 }
 
 document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("close-drawer").addEventListener("click", closeDrawer);
 
-    document.getElementById("set-start-btn").addEventListener("click", () => {
-        if (!currentStation) return;
-
-        selectedStart = {
-            lat: Number(currentStation.lat),
-            lng: Number(currentStation.lng)
-        };
-
-        document.getElementById("route-status").innerText =
-            "Start: " + currentStation.name;
-
-        console.log("✅ Start set:", currentStation.name);
-    });
-
-    document.getElementById("set-end-btn").addEventListener("click", () => {
-        if (!currentStation || !selectedStart) {
-            alert("Select a start station first");
-            return;
-        }
-
-        selectedEnd = {
-            lat: Number(currentStation.lat),
-            lng: Number(currentStation.lng)
-        };
-
-        calculateRoute(selectedStart, selectedEnd);
-
-        console.log("🗺️ Route drawn");
-
-        selectedStart = null;
-        selectedEnd = null;
-    });
     
     document.getElementById("route-btn").addEventListener("click", () => {
         if (!selectedStart || !selectedEnd) {
@@ -422,10 +548,52 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         
-        calculateRoute(selectedStart, selectedEnd);
+        calculateSmartRoute(selectedStart, selectedEnd);
     });
 
 });
+
+function getNearestStartStation(point) {
+    let closest = null;
+    let minDistance = Infinity;
+
+    stations.forEach(station => {
+        if (station.available_bikes <= 0) return; // skip ones without bikes
+
+        const dist = Math.hypot(
+            point.lat - Number(station.lat),
+            point.lng - Number(station.lng)
+        );
+
+        if (dist < minDistance) {
+            minDistance = dist;
+            closest = station;
+        }
+    });
+
+    return closest;
+}
+
+function getNearestEndStation(point) {
+    let closest = null;
+    let minDistance = Infinity;
+
+    stations.forEach(station => {
+        if (station.available_stands <= 0) return; // skip ones with nowhere to park
+
+        const dist = Math.hypot(
+            point.lat - Number(station.lat),
+            point.lng - Number(station.lng)
+        );
+
+        if (dist < minDistance) {
+            minDistance = dist;
+            closest = station;
+        }
+    });
+
+    return closest;
+}
 
 function initAutocomplete() {
     const startInput = document.getElementById("start-input");
@@ -443,15 +611,9 @@ function initAutocomplete() {
     const endAutocomplete = new google.maps.places.Autocomplete(endInput, {
         componentRestrictions: { country: "ie" }
     });
-    
-    function tryRoute() {
-        if (selectedStart && selectedEnd) {
-            console.log("🚀 Drawing route...");
-            calculateRoute(selectedStart, selectedEnd);
-        }
-    }
 
     startAutocomplete.addListener("place_changed", () => {
+        infoWindow.close();
         const place = startAutocomplete.getPlace();
 
         if (!place.geometry) {
@@ -500,15 +662,13 @@ function swapRoute() {
     [startInput.value, endInput.value] = [endInput.value, startInput.value];
     
     clearRoute();
-    calculateRoute(selectedStart, selectedEnd);
+    calculateSmartRoute(selectedStart, selectedEnd);
 }
 
 // Reset the screen
 function resetRoute() {
     // Clear the route line
-    if (directionsRenderer) {
-        directionsRenderer.setDirections({ routes: [] });
-    }
+    clearRoute();
     
     // Reset values
     selectedStart = null;
@@ -560,7 +720,6 @@ var infoWindow = null;
 
 // Global Route Mapping variables
 var directionsService = null;
-var directionsRenderer = null;
 
 // Required for Google Maps callback
 window.initMap = initMap;
