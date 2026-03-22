@@ -255,17 +255,7 @@ document.getElementById("close-account-2").onclick = function() {
   document.getElementById("account-modal").style.display = "none";
 };
 
-// weather
-async function loadCurrentWeather() {
-    const response = await fetch("/weather");
-    const data = await response.json();
 
-    document.getElementById("temperature").textContent = data.temperature + "°C";
-    document.getElementById("weather").textContent = data.weather;
-    document.getElementById("wind_speed").textContent = data.wind_speed + "m/s";
-    document.getElementById("humidity").textContent = data.humidity + "%";
-}
-loadCurrentWeather();
 </script>
 
 </body>

@@ -151,6 +151,24 @@ function getStations() {
         });
 }
 
+// display current weather information
+async function loadCurrentWeather() {
+    try{
+        const response = await fetch("/weather");
+        const data = await response.json();
+
+        const temp = Math.round(data.temperature)
+        const windspeed = Math.round(data.wind_speed)
+        document.getElementById("temperature").textContent = `${temp}°C`;
+        document.getElementById("weather").textContent = data.weather;
+        document.getElementById("wind_speed").textContent = `${windspeed}m/s`;
+        document.getElementById("humidity").textContent = data.humidity + "%";
+    } catch (error) {
+        console.error("Weather load failed:", error);
+    }
+}
+document.addEventListener("DOMContentLoaded", loadCurrentWeather);
+
 // Initialize and add the map
 function initMap() {
     const dublin = { lat: 53.35014, lng: -6.266155 };
