@@ -32,18 +32,25 @@ def index():
 @app.route("/stations")
 def stations():
     try:
-        # when front page loads, fetch latest data from API and save to DB, then return latest view data
-        raw_data = fetch_stations_raw()
-        if raw_data is None:
-            return jsonify({"error": "Bike API unavailable"}), 500
-
-        # save raw data from API to DB
-        save_snapshot(raw_data)
-        # return latest view data from DB
+        # Read latest snapshot from DB only.
+        # API polling is handled by the background importer (cell04).
         data = get_latest_stations_view()
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": f"/stations failed: {str(e)}"}), 500
+
+
+@app.route("/stations/refresh")
+def stations_refresh():
+    try:
+        # Manual fallback endpoint: fetch from API and persist now.
+        raw_data = fetch_stations_raw()
+        if raw_data is None:
+            return jsonify({"error": "Bike API unavailable"}), 500
+        result = save_snapshot(raw_data)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"/stations/refresh failed: {str(e)}"}), 500
 
 
 @app.route("/weather")
