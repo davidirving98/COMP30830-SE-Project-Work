@@ -408,7 +408,7 @@ function calculateSmartRoute(start, end) {
                 lng: Number(startStation.lng)
             },
             mode: google.maps.TravelMode.WALKING,
-            color: "#16a34a", // green
+            color: "#FFFF00", // yellow
             label: `🚶 Walk to ${startStation.name}`
         },
         {
@@ -421,7 +421,7 @@ function calculateSmartRoute(start, end) {
                 lng: Number(endStation.lng)
             },
             mode: google.maps.TravelMode.BICYCLING,
-            color: "#2563eb", // blue
+            color: "#FF0000", // red
             label: `🚲 Cycle to ${endStation.name}`
         },
         {
@@ -431,7 +431,7 @@ function calculateSmartRoute(start, end) {
             },
             destination: end,
             mode: google.maps.TravelMode.WALKING,
-            color: "#16a34a",
+            color: "#FFFF00",
             label: "🚶 Walk to your destination"
         }
     ];
