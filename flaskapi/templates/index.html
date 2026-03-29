@@ -64,7 +64,7 @@
 
   <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key={{apikey}}&callback=initMap&v=weekly" defer> </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key={{apikey}}&libraries=places&callback=initMap&v=weekly" defer></script>
 
 
 
@@ -90,6 +90,8 @@
           <img src="{{ url_for('static', filename='icons/bike.svg') }}" width="16">
           <span id="bikes-available">0 Bikes Available</span>
         </div>
+        
+        <button onclick="openDrawer()">🗺️ Plan Route</button>
 
       </div>
 
@@ -243,21 +245,43 @@
   </div>
 
   <script>
-    document.getElementById("account-btn").onclick = function () {
-      document.getElementById("account-modal").style.display = "flex";
-    };
 
-    document.getElementById("close-account").onclick = function () {
-      document.getElementById("account-modal").style.display = "none";
-    };
-
-document.getElementById("close-account-2").onclick = function() {
-  document.getElementById("account-modal").style.display = "none";
-};
 
 
 </script>
 
+<div id="drawer" class="drawer">
+  
+  <div class="drawer-header">
+    <h2 id="drawer-title">Station</h2>
+    <span id="close-drawer" class="close">&times;</span></div>
+  
+  <div class="drawer-search">
+    <input id="start-input" placeholder="Enter your starting location">
+    <input id="end-input" placeholder="Enter your destination">
+    <button id="route-btn">🚲 Get Route</button>
+  </div>
+  
+  <div class="drawer-body">
+
+    
+    <div class="drawer-buttons">
+    
+    <div>
+    <p>Bikes: <span id="drawer-bikes">-</span></p>
+    <p>Stands: <span id="drawer-stands">-</span></p>
+    </div>
+    
+    <div class="route-status" id="route-status">No route selected</div>
+    
+    <div id="route-actions" style="display: none;">
+      <button onclick="swapRoute()">🔁 Swap</button>
+      <button onclick="resetRoute()">❌ Clear Route</button>
+    </div>
+    
+  </div>
+  </div>
+  
 </body>
 
 </html>

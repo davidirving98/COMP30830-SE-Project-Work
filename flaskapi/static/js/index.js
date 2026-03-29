@@ -1,6 +1,13 @@
 // Global array for storing the station data from the API
 let stations = [];
 
+// Initialise route mapping variables
+let selectedStart = null;
+let selectedEnd = null;
+let currentStation = null;
+let activeRenderers = [];
+let clickMarkers = [];
+
 // Load Google Charts once to speed up
 google.charts.load('current', { packages: ['corechart'] });
 
@@ -33,6 +40,11 @@ function addMarkers(stations) {
 
         // Show the info window upon click
         marker.addListener("click", () => {
+            // Call routing function
+            currentStation = station;
+            
+            openDrawer(station);
+            
             // Info window content (html)
             const content = `
                 <div>
@@ -170,25 +182,86 @@ async function loadCurrentWeather() {
 document.addEventListener("DOMContentLoaded", loadCurrentWeather);
 
 // Initialize and add the map
-function initMap() {
-    const dublin = { lat: 53.35014, lng: -6.266155 };
+    function initMap() {
+        const dublin = { lat: 53.35014, lng: -6.266155 };
+        
+        const dublinBounds = {
+        north: 53.45,
+        south: 53.25,
+        west: -6.45,
+        east: -6.05
+        };
 
-    map = new google.maps.Map(document.getElementById("map"), {
+        map = new google.maps.Map(document.getElementById("map"), {
         zoom: 14,
         center: dublin,
+        restriction: {
+            latLngBounds: dublinBounds,
+            strictBounds: true
+        }  
     });
+        
+    let clickStage = "start";
+
+    map.addListener("click", (e) => {
+    infoWindow.close();
+
+    const clickedLocation = {
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng()
+    };
+    
+    // Clear old markers
+    if (clickMarkers.length >= 2) {
+        clickMarkers.forEach(m => m.setMap(null));
+        clickMarkers = [];
+    }
+
+    // Add marker
+    const marker = new google.maps.Marker({
+        position: clickedLocation,
+        map: map
+    });
+
+clickMarkers.push(marker);
+
+    clickMarkers.push(marker);
+
+    if (clickStage === "start") {
+        selectedStart = clickedLocation;
+        document.getElementById("start-input").value = "Selected on map";
+        alert("Now select your destination");
+        clickStage = "end";
+    } else {
+        selectedEnd = clickedLocation;
+        document.getElementById("end-input").value = "Selected on map";
+        clickStage = "start";
+
+        calculateSmartRoute(selectedStart, selectedEnd);
+    }
+});
 
     // Single reusable information window
     infoWindow = new google.maps.InfoWindow();
-
-    // Close any open station info window when you click elsewhere
-    map.addListener("click", () => {
-        infoWindow.close();
-    });
+    
+    // Route Mapping
+    directionsService = new google.maps.DirectionsService();
 
     // Load station data
     getStations();
+    
+    initAutocomplete();
 }
+
+function isWithinDublin(location) {
+    return (
+        location.lat >= 53.25 &&
+        location.lat <= 53.45 &&
+        location.lng >= -6.45 &&
+        location.lng <= -6.05
+    );
+}
+
 // Function to decide the marker colour
 function getStationColor(station) {
 
@@ -294,36 +367,377 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
-// Account modal controls
-const accountBtn = document.getElementById("account-btn");
-const accountModal = document.getElementById("account-modal");
-const closeAccount = document.getElementById("close-account");
-const closeAccount2 = document.getElementById("close-account-2");
+// Routing Slide Drawer
+function openDrawer(station = null) {
+    const drawer = document.getElementById("drawer");
+    if (!drawer) return;
 
-// Open modal
-accountBtn.addEventListener("click", () => {
-    accountModal.style.display = "flex";
-});
-
-//Close modal
-closeAccount.addEventListener("click", () => {
-    accountModal.style.display = "none";
-});
-
-closeAccount2.addEventListener("click", () => {
-    accountModal.style.display = "none";
-});
-
-// Close modal if clicking elsewhere
-window.addEventListener("click", (e) => {
-    if (e.target === accountModal) {
-        accountModal.style.display = "none";
+    const title = document.getElementById("drawer-title");
+    const bikes = document.getElementById("drawer-bikes");
+    const stands = document.getElementById("drawer-stands");
+    
+    if (station) {
+        currentStation = station;
+    
+    document.getElementById("drawer-title").innerText = station.name;
+    document.getElementById("drawer-bikes").innerText = station.available_bikes;
+    document.getElementById("drawer-stands").innerText = station.available_stands;
+    } else {
+    document.getElementById("drawer-title").innerText = "Route Planner";
+    document.getElementById("drawer-bikes").innerText = "-";
+    document.getElementById("drawer-stands").innerText = "-";     
     }
+    
+    drawer.classList.add("open");
+}
+
+function closeDrawer()  {
+    document.getElementById("drawer").classList.remove("open");
+}
+
+// Routing Function
+function calculateSmartRoute(start, end) {
+    infoWindow.close();
+    if (stations.length === 0) {
+        alert("Stations still loading...");
+        return;
+    }
+    
+    if (!isWithinDublin(start) || !isWithinDublin(end)) {
+    alert("Route must be within Dublin");
+    return;
+}
+    
+    clearRoute();
+
+    const startStation = getNearestStartStation(start);
+    const endStation = getNearestEndStation(end);
+
+    if (!startStation || !endStation) {
+        alert("No nearby stations available");
+        return;
+    }
+
+    const segments = [
+        {
+            origin: start,
+            destination: {
+                lat: Number(startStation.lat),
+                lng: Number(startStation.lng)
+            },
+            mode: google.maps.TravelMode.WALKING,
+            color: "#FFFF00", // yellow
+            label: `🚶 Walk to ${startStation.name}`
+        },
+        {
+            origin: {
+                lat: Number(startStation.lat),
+                lng: Number(startStation.lng)
+            },
+            destination: {
+                lat: Number(endStation.lat),
+                lng: Number(endStation.lng)
+            },
+            mode: google.maps.TravelMode.BICYCLING,
+            color: "#FF0000", // red
+            label: `🚲 Cycle to ${endStation.name}`
+        },
+        {
+            origin: {
+                lat: Number(endStation.lat),
+                lng: Number(endStation.lng)
+            },
+            destination: end,
+            mode: google.maps.TravelMode.WALKING,
+            color: "#FFFF00",
+            label: "🚶 Walk to your destination"
+        }
+    ];
+
+    drawSegments(segments);
+}
+
+function drawSegments(segments) {
+    let fullDirectionsHTML = "";
+    let totalDistance = 0;
+    let totalDuration = 0;
+    let completed = 0; // track finished calls
+
+    segments.forEach((segment) => {
+        const renderer = new google.maps.DirectionsRenderer({
+            suppressMarkers: false,
+            polylineOptions: {
+                strokeColor: segment.color,
+                strokeWeight: 5,
+                strokeOpacity: 0.9
+            }
+        });
+
+        renderer.setMap(map);
+        activeRenderers.push(renderer);
+
+        directionsService.route({
+            origin: segment.origin,
+            destination: segment.destination,
+            travelMode: segment.mode
+        }, (result, status) => {
+            if (status === "OK") {
+                renderer.setDirections(result);
+
+                const leg = result.routes[0].legs[0];
+
+                totalDistance += leg.distance.value;
+                totalDuration += leg.duration.value;
+                
+                // Segment header
+                fullDirectionsHTML += `
+                    <div style="
+                        font-weight:600;
+                        margin-top:12px;
+                        margin-bottom:6px;
+                        color:#111;
+                    ">
+                        ${segment.label}
+                    </div>
+                `;
+
+                // Steps (clean card UI)
+                leg.steps.forEach((step, i) => {
+                    fullDirectionsHTML += `
+                        <div style="
+                            margin:6px 0;
+                            padding:10px;
+                            background:#f9fafb;
+                            border-radius:8px;
+                            box-shadow:0 1px 3px rgba(0,0,0,0.05);
+                        ">
+                            <strong>${i + 1}.</strong> ${step.instructions}<br>
+                            <span style="color:#666; font-size:12px;">
+                                ${step.distance.text}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                fullDirectionsHTML += "<br>";
+
+                // count finished segments
+                completed++;
+
+                // ONLY update when ALL done
+                if (completed === segments.length) {
+                    const km = (totalDistance / 1000).toFixed(2);
+                    const mins = Math.round(totalDuration / 60);
+
+                    document.getElementById("route-status").innerHTML =
+                        `<strong>🚲 ${km} km • ⏱️ ${mins} mins</strong><br><br>` +
+                        fullDirectionsHTML;
+                }
+
+                map.fitBounds(result.routes[0].bounds);
+
+            } else {
+                console.error("Segment failed:", status);
+            }
+        });
+    });
+}
+// Clear route after use
+function clearRoute() {
+    activeRenderers.forEach(renderer => {
+        renderer.setMap(null); // removes from map
+    });
+
+    activeRenderers = []; // reset array
+    
+    //clear click markers
+    clickMarkers.forEach(m => m.setMap(null));
+    clickMarkers = [];
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    document.getElementById("close-drawer").addEventListener("click", closeDrawer);
+
+    
+    document.getElementById("route-btn").addEventListener("click", () => {
+        if (!selectedStart || !selectedEnd) {
+            alert("Please enter both your start point and destination");
+            return;
+        }
+        
+        calculateSmartRoute(selectedStart, selectedEnd);
+    });
+
 });
 
-// Global map + info windo variables
+function getNearestStartStation(point) {
+    let closest = null;
+    let minDistance = Infinity;
+
+    stations.forEach(station => {
+        if (station.available_bikes <= 0) return; // skip ones without bikes
+
+        const dist = Math.hypot(
+            point.lat - Number(station.lat),
+            point.lng - Number(station.lng)
+        );
+
+        if (dist < minDistance) {
+            minDistance = dist;
+            closest = station;
+        }
+    });
+
+    return closest;
+}
+
+function getNearestEndStation(point) {
+    let closest = null;
+    let minDistance = Infinity;
+
+    stations.forEach(station => {
+        if (station.available_stands <= 0) return; // skip ones with nowhere to park
+
+        const dist = Math.hypot(
+            point.lat - Number(station.lat),
+            point.lng - Number(station.lng)
+        );
+
+        if (dist < minDistance) {
+            minDistance = dist;
+            closest = station;
+        }
+    });
+
+    return closest;
+}
+
+function initAutocomplete() {
+    const startInput = document.getElementById("start-input");
+    const endInput = document.getElementById("end-input");
+
+    if (!startInput || !endInput) {
+        console.error("Inputs not found");
+        return;
+    }
+
+    const startAutocomplete = new google.maps.places.Autocomplete(startInput, {
+        componentRestrictions: { country: "ie" }
+    });
+
+    const endAutocomplete = new google.maps.places.Autocomplete(endInput, {
+        componentRestrictions: { country: "ie" }
+    });
+
+    startAutocomplete.addListener("place_changed", () => {
+        infoWindow.close();
+        const place = startAutocomplete.getPlace();
+
+        if (!place.geometry) {
+            alert("Please select a valid location");
+            return;
+        }
+
+        selectedStart = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+        };
+
+        console.log("✅ Start set:", selectedStart);
+        
+    });
+
+    endAutocomplete.addListener("place_changed", () => {
+        const place = endAutocomplete.getPlace();
+
+        if (!place.geometry) {
+            alert("Please select a valid location");
+            return;
+        }
+
+        selectedEnd = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+        };
+
+        console.log("🏁 End set:", selectedEnd);
+
+    });
+}
+
+// If a user wants to swap their start and end points
+function swapRoute() {
+    if (!selectedStart || !selectedEnd) return;
+    
+    // Swap the locations
+    [selectedStart, selectedEnd] = [selectedEnd, selectedStart];
+    
+    // Swap the text for the inputs
+    const startInput = document.getElementById("start-input");
+    const endInput = document.getElementById("end-input");
+    
+    [startInput.value, endInput.value] = [endInput.value, startInput.value];
+    
+    clearRoute();
+    calculateSmartRoute(selectedStart, selectedEnd);
+}
+
+// Reset the screen
+function resetRoute() {
+    // Clear the route line
+    clearRoute();
+    
+    // Reset values
+    selectedStart = null;
+    selectedEnd = null;
+    
+    // Clear the inputs in the drawer
+    document.getElementById("start-input").value = "";
+    document.getElementById("end-input").value = "";
+    document.getElementById("route-status").innerText = "No route selected";
+    
+    document.getElementById("route-actions").style.display = "none";
+}
+
+// Account modal controls
+document.addEventListener("DOMContentLoaded", () => {
+    const accountBtn = document.getElementById("account-btn");
+    const accountModal = document.getElementById("account-modal");
+    const closeAccount = document.getElementById("close-account");
+    const closeAccount2 = document.getElementById("close-account-2");
+
+    if (accountBtn && accountModal) {
+        accountBtn.addEventListener("click", () => {
+            accountModal.style.display = "flex";
+        });
+    }
+
+    if (closeAccount && accountModal) {
+        closeAccount.addEventListener("click", () => {
+            accountModal.style.display = "none";
+        });
+    }
+
+    if (closeAccount2 && accountModal) {
+        closeAccount2.addEventListener("click", () => {
+            accountModal.style.display = "none";
+        });
+    }
+
+    window.addEventListener("click", (e) => {
+        if (e.target === accountModal) {
+            accountModal.style.display = "none";
+        }
+    });
+});
+
+// Global map + info window variables
 var map = null;
 var infoWindow = null;
+
+// Global Route Mapping variables
+var directionsService = null;
 
 // Required for Google Maps callback
 window.initMap = initMap;
