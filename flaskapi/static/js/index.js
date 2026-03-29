@@ -7,6 +7,10 @@ let selectedEnd = null;
 let currentStation = null;
 let activeRenderers = [];
 let clickMarkers = [];
+let routeMarkers = [];
+
+// reverse geocoding from Google Maps
+let geocoder;
 
 // Load Google Charts once to speed up
 google.charts.load('current', { packages: ['corechart'] });
@@ -185,6 +189,8 @@ document.addEventListener("DOMContentLoaded", loadCurrentWeather);
     function initMap() {
         const dublin = { lat: 53.35014, lng: -6.266155 };
         
+        geocoder = new google.maps.Geocoder();
+        
         const dublinBounds = {
         north: 53.45,
         south: 53.25,
@@ -225,19 +231,45 @@ document.addEventListener("DOMContentLoaded", loadCurrentWeather);
 
 clickMarkers.push(marker);
 
-    clickMarkers.push(marker);
 
     if (clickStage === "start") {
         selectedStart = clickedLocation;
-        document.getElementById("start-input").value = "Selected on map";
-        alert("Now select your destination");
+        // set fallback if geocoder fails
+        document.getElementById("start-input").value =
+            `${clickedLocation.lat.toFixed(4)}, ${clickedLocation.lng.toFixed(4)}`;
+
+        // THEN try to improve it with geocoder
+        if (geocoder) {
+            geocoder.geocode({ location: clickedLocation }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    document.getElementById("start-input").value =
+                        results[0].formatted_address;
+                }
+            });
+        }
+        document.getElementById("route-status").innerText =
+    "Start selected — now choose destination";
         clickStage = "end";
     } else {
         selectedEnd = clickedLocation;
-        document.getElementById("end-input").value = "Selected on map";
+        // set fallback if geocoder fails
+        document.getElementById("end-input").value =
+    `${clickedLocation.lat.toFixed(4)}, ${clickedLocation.lng.toFixed(4)}`;
+
+        // THEN try to improve it with geocoder
+        if (geocoder) {
+            geocoder.geocode({ location: clickedLocation }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    document.getElementById("end-input").value =
+                        results[0].formatted_address;
+                }
+            });
+        }
+        
+        document.getElementById("route-status").innerText = "Destination selected — click Get Route";
+        
         clickStage = "start";
 
-        calculateSmartRoute(selectedStart, selectedEnd);
     }
 });
 
@@ -373,19 +405,14 @@ function openDrawer(station = null) {
     if (!drawer) return;
 
     const title = document.getElementById("drawer-title");
-    const bikes = document.getElementById("drawer-bikes");
-    const stands = document.getElementById("drawer-stands");
+
     
     if (station) {
         currentStation = station;
-    
     document.getElementById("drawer-title").innerText = station.name;
-    document.getElementById("drawer-bikes").innerText = station.available_bikes;
-    document.getElementById("drawer-stands").innerText = station.available_stands;
+
     } else {
     document.getElementById("drawer-title").innerText = "Route Planner";
-    document.getElementById("drawer-bikes").innerText = "-";
-    document.getElementById("drawer-stands").innerText = "-";     
     }
     
     drawer.classList.add("open");
@@ -409,6 +436,7 @@ function calculateSmartRoute(start, end) {
 }
     
     clearRoute();
+    document.getElementById("route-actions").style.display = "none";
 
     const startStation = getNearestStartStation(start);
     const endStation = getNearestEndStation(end);
@@ -427,7 +455,7 @@ function calculateSmartRoute(start, end) {
             },
             mode: google.maps.TravelMode.WALKING,
             color: "#FFFF00", // yellow
-            label: `🚶 Walk to ${startStation.name}`
+            label: `A to B: 🚶 Walk to ${startStation.name}`
         },
         {
             origin: {
@@ -440,7 +468,7 @@ function calculateSmartRoute(start, end) {
             },
             mode: google.maps.TravelMode.BICYCLING,
             color: "#FF0000", // red
-            label: `🚲 Cycle to ${endStation.name}`
+            label: `B to C: 🚲 Cycle to ${endStation.name}`
         },
         {
             origin: {
@@ -450,7 +478,7 @@ function calculateSmartRoute(start, end) {
             destination: end,
             mode: google.maps.TravelMode.WALKING,
             color: "#FFFF00",
-            label: "🚶 Walk to your destination"
+            label: "C to D: 🚶 Walk to your destination"
         }
     ];
 
@@ -458,14 +486,41 @@ function calculateSmartRoute(start, end) {
 }
 
 function drawSegments(segments) {
-    let fullDirectionsHTML = "";
     let totalDistance = 0;
     let totalDuration = 0;
-    let completed = 0; // track finished calls
+    let completed = 0;
 
-    segments.forEach((segment) => {
+    let routePoints = [];
+    let segmentResults = new Array(segments.length);
+
+    // Clear old route markers first
+    routeMarkers.forEach(m => m.setMap(null));
+    routeMarkers = [];
+
+    // Create A → B → C → D markers ONCE
+    const points = [
+        segments[0].origin,              // A
+        segments[0].destination,         // B
+        segments[1].destination,         // C
+        segments[2].destination          // D
+    ];
+
+    const labels = ["A", "B", "C", "D"];
+
+    points.forEach((point, i) => {
+        const marker = new google.maps.Marker({
+            position: point,
+            map: map,
+            label: labels[i]
+        });
+        routeMarkers.push(marker);
+    });
+
+    // Loop through segments (no markers inside here)
+    segments.forEach((segment, index) => {
         const renderer = new google.maps.DirectionsRenderer({
-            suppressMarkers: false,
+            suppressMarkers: true,
+            preserveViewport: true,
             polylineOptions: {
                 strokeColor: segment.color,
                 strokeWeight: 5,
@@ -488,9 +543,14 @@ function drawSegments(segments) {
 
                 totalDistance += leg.distance.value;
                 totalDuration += leg.duration.value;
-                
-                // Segment header
-                fullDirectionsHTML += `
+
+                // Collect full route path for proper zoom
+                result.routes[0].overview_path.forEach(point => {
+                    routePoints.push(point);
+                });
+
+                // Build segment HTML
+                let segmentHTML = `
                     <div style="
                         font-weight:600;
                         margin-top:12px;
@@ -501,9 +561,8 @@ function drawSegments(segments) {
                     </div>
                 `;
 
-                // Steps (clean card UI)
                 leg.steps.forEach((step, i) => {
-                    fullDirectionsHTML += `
+                    segmentHTML += `
                         <div style="
                             margin:6px 0;
                             padding:10px;
@@ -519,22 +578,33 @@ function drawSegments(segments) {
                     `;
                 });
 
-                fullDirectionsHTML += "<br>";
+                segmentHTML += "<br>";
 
-                // count finished segments
+                // Store in correct order
+                segmentResults[index] = segmentHTML;
+
                 completed++;
 
-                // ONLY update when ALL done
+                // Only render AFTER all segments finish
                 if (completed === segments.length) {
                     const km = (totalDistance / 1000).toFixed(2);
                     const mins = Math.round(totalDuration / 60);
 
+                    const orderedHTML = segmentResults.join("");
+
                     document.getElementById("route-status").innerHTML =
                         `<strong>🚲 ${km} km • ⏱️ ${mins} mins</strong><br><br>` +
-                        fullDirectionsHTML;
-                }
+                        orderedHTML;
 
-                map.fitBounds(result.routes[0].bounds);
+                    // Show buttons
+                    const actions = document.getElementById("route-actions");
+                    if (actions) actions.style.display = "flex";
+
+                    // Fit FULL route bounds
+                    const bounds = new google.maps.LatLngBounds();
+                    routePoints.forEach(point => bounds.extend(point));
+                    map.fitBounds(bounds, 80);
+                }
 
             } else {
                 console.error("Segment failed:", status);
@@ -553,6 +623,12 @@ function clearRoute() {
     //clear click markers
     clickMarkers.forEach(m => m.setMap(null));
     clickMarkers = [];
+    
+    // clear route markers
+    routeMarkers.forEach(marker => marker.setMap(null));
+    routeMarkers = [];
+    
+    document.getElementById("route-status").innerText = "No route selected";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -565,7 +641,6 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Please enter both your start point and destination");
             return;
         }
-        
         calculateSmartRoute(selectedStart, selectedEnd);
     });
 
@@ -697,7 +772,10 @@ function resetRoute() {
     document.getElementById("end-input").value = "";
     document.getElementById("route-status").innerText = "No route selected";
     
-    document.getElementById("route-actions").style.display = "none";
+    // hide buttons
+    const actions = document.getElementById("route-actions");
+    if (actions) actions.style.display = "none";
+    
 }
 
 // Account modal controls

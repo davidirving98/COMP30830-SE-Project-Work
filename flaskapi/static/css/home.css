@@ -508,3 +508,20 @@ button:hover {
 .pac-container {
   z-index: 9999 !important;
 }
+
+#route-actions {
+  display: flex;
+  gap: 6px;
+  margin-right: 10px;
+}
+
+#route-actions button {
+  padding: 6px 10px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 6px;
+}
+
+#route-actions button:hover {
+  background: rgba(255,255,255,0.35);
+}
