@@ -37,9 +37,9 @@
             💧 <span id="humidity">--</span>
         </div>
     </div>
-
+    
     <div class="weather-right">
-      Last updated: 17:09
+      <span>Last Updated:</span>
     </div>
 
   </header>
@@ -153,8 +153,8 @@
         <div class="welcome-step">
           <div class="icon purple">🚲</div>
           <div>
-            <strong>Book Your Bike</strong>
-            <p>Reserve your bike and start your journey!</p>
+            <strong>Plan your Journey</strong>
+            <p>Choose your start and end points, and start your journey!</p>
           </div>
         </div>
 
@@ -264,6 +264,12 @@ loadCurrentWeather();
   
   <div class="drawer-header">
     <h2 id="drawer-title">Station</h2>
+    
+    <div id="route-actions" style="display: none;">
+      <button onclick="swapRoute()">🔁 Swap</button>
+      <button onclick="resetRoute()">❌ Clear Route</button>
+    </div>
+    
     <span id="close-drawer" class="close">&times;</span></div>
   
   <div class="drawer-search">
@@ -277,17 +283,9 @@ loadCurrentWeather();
     
     <div class="drawer-buttons">
     
-    <div>
-    <p>Bikes: <span id="drawer-bikes">-</span></p>
-    <p>Stands: <span id="drawer-stands">-</span></p>
-    </div>
-    
     <div class="route-status" id="route-status">No route selected</div>
     
-    <div id="route-actions" style="display: none;">
-      <button onclick="swapRoute()">🔁 Swap</button>
-      <button onclick="resetRoute()">❌ Clear Route</button>
-    </div>
+
     
   </div>
   </div>
