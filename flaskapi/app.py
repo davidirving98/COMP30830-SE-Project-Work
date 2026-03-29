@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 import config
-from openweather import get_weather
+from openweather import get_weather, get_forecast
 
 from jcdecaux import get_stations, get_station, fetch_stations_raw
 from bikeinfo_SQL import (
@@ -59,6 +59,15 @@ def weather():
 
     if data is None:
         return jsonify({"error": "Weather API unavailable"}), 500
+
+    return jsonify(data)
+
+@app.route("/forecast")
+def forecast():
+    data = get_forecast()
+
+    if data is None:
+        return jsonify({"error": "Forecast API unavailable"}), 500
 
     return jsonify(data)
 
@@ -116,4 +125,4 @@ def station_history(station_id):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)

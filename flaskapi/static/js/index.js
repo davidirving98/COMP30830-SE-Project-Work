@@ -8,6 +8,8 @@ let currentStation = null;
 let activeRenderers = [];
 let clickMarkers = [];
 let routeMarkers = [];
+let startMarker = null;
+let endMarker = null;
 
 // reverse geocoding from Google Maps
 let geocoder;
@@ -183,7 +185,36 @@ async function loadCurrentWeather() {
         console.error("Weather load failed:", error);
     }
 }
-document.addEventListener("DOMContentLoaded", loadCurrentWeather);
+
+// display forecast weather information
+async function loadForecast() {
+    try {
+        const response = await fetch("/forecast");
+        const data = await response.json();
+
+        // 1st forecast card
+        const temp1 = Math.round(data[0].temperature);
+        document.getElementById("forecast1-time").textContent = data[0].forecast_time;
+        document.getElementById("forecast1-temp").textContent = `${temp1}°C`;
+        document.getElementById("forecast1-desc").textContent = data[0].weather;
+        document.getElementById("forecast1-humidity").textContent =  `💧 ${data[0].humidity}%`;
+
+        // 2nd forecast card
+        const temp2 = Math.round(data[1].temperature);
+        document.getElementById("forecast2-time").textContent = data[1].forecast_time;
+        document.getElementById("forecast2-temp").textContent = `${temp2}°C`;
+        document.getElementById("forecast2-desc").textContent = data[1].weather;
+        document.getElementById("forecast2-humidity").textContent =  `💧 ${data[0].humidity}%`;
+
+    } catch (err) {
+        console.error("Forecast load failed:", err);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadCurrentWeather();
+    loadForecast();
+});
 
 // Initialize and add the map
     function initMap() {
@@ -216,62 +247,131 @@ document.addEventListener("DOMContentLoaded", loadCurrentWeather);
         lat: e.latLng.lat(),
         lng: e.latLng.lng()
     };
-    
-    // Clear old markers
-    if (clickMarkers.length >= 2) {
-        clickMarkers.forEach(m => m.setMap(null));
-        clickMarkers = [];
-    }
 
-    // Add marker
     const marker = new google.maps.Marker({
         position: clickedLocation,
         map: map
     });
 
-clickMarkers.push(marker);
+    clickMarkers.push(marker);
 
+    // Create model
+    const isStart = clickStage === "start";
 
-    if (clickStage === "start") {
-        selectedStart = clickedLocation;
-        // set fallback if geocoder fails
+    const content = `
+        <div class="map-popup">
+            <div class="popup-text">
+                ${isStart ? "Set as starting point?" : "Set as destination?"}
+            </div>
+            <div class="popup-actions">
+                <button id="confirm-btn" class="btn primary">Yes</button>
+                <button id="cancel-btn" class="btn secondary">No</button>
+            </div>
+        </div>
+    `;
+
+    infoWindow.setContent(content);
+    infoWindow.open(map, marker);
+
+    google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
+        document.getElementById("confirm-btn").addEventListener("click", () => {
+            confirmPoint(
+                isStart ? "start" : "end",
+                clickedLocation.lat,
+                clickedLocation.lng
+            );
+        });
+        document.getElementById("cancel-btn").addEventListener("click", () => {
+            cancelPoint();
+        });
+});
+});
+
+function confirmPoint(type, lat, lng) {
+    const location = { lat, lng };
+
+    if (type === "start") {
+        selectedStart = location;
+
+        // Delete original start marker
+        if (startMarker) startMarker.setMap(null);
+
+        // Create new start market
+        startMarker = new google.maps.Marker({
+            position: location,
+            map: map,
+            label: "A"
+        });
+
+        // Delete temporary marker
+        clickMarkers.forEach(m => m.setMap(null));
+        clickMarkers = [];
+
         document.getElementById("start-input").value =
-            `${clickedLocation.lat.toFixed(4)}, ${clickedLocation.lng.toFixed(4)}`;
+            `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
-        // THEN try to improve it with geocoder
+        // geocoder
         if (geocoder) {
-            geocoder.geocode({ location: clickedLocation }, (results, status) => {
+            geocoder.geocode({ location }, (results, status) => {
                 if (status === "OK" && results[0]) {
                     document.getElementById("start-input").value =
                         results[0].formatted_address;
                 }
             });
         }
-        document.getElementById("route-status").innerText =
-    "Start selected — now choose destination";
-        clickStage = "end";
-    } else {
-        selectedEnd = clickedLocation;
-        // set fallback if geocoder fails
-        document.getElementById("end-input").value =
-    `${clickedLocation.lat.toFixed(4)}, ${clickedLocation.lng.toFixed(4)}`;
 
-        // THEN try to improve it with geocoder
+        document.getElementById("route-status").innerText =
+            "Start selected — now choose destination";
+
+        clickStage = "end";
+        infoWindow.close();
+
+    } else {
+        selectedEnd = location;
+
+        // Delete original end marker
+        if (endMarker) endMarker.setMap(null);
+
+        // Create new end marker
+        endMarker = new google.maps.Marker({
+            position: location,
+            map: map,
+            label: "D"
+        });
+
+        // Delete temporary marker
+        clickMarkers.forEach(m => m.setMap(null));
+        clickMarkers = [];
+
+        document.getElementById("end-input").value =
+            `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
         if (geocoder) {
-            geocoder.geocode({ location: clickedLocation }, (results, status) => {
+            geocoder.geocode({ location }, (results, status) => {
                 if (status === "OK" && results[0]) {
                     document.getElementById("end-input").value =
                         results[0].formatted_address;
                 }
             });
         }
-        
-        document.getElementById("route-status").innerText = "Destination selected — click Get Route";
-        
+
+        document.getElementById("route-status").innerText =
+            "Route calculating...";
+
         clickStage = "start";
 
+        infoWindow.close();
+
+        // Draw the route
+        calculateSmartRoute(selectedStart, selectedEnd);
     }
-});
+}
+
+function cancelPoint() {
+    clickMarkers.forEach(m => m.setMap(null));
+    clickMarkers = [];
+    infoWindow.close();
+}
 
     // Single reusable information window
     infoWindow = new google.maps.InfoWindow();
@@ -551,34 +651,28 @@ function drawSegments(segments) {
 
                 // Build segment HTML
                 let segmentHTML = `
-                    <div style="
-                        font-weight:600;
-                        margin-top:12px;
-                        margin-bottom:6px;
-                        color:#111;
-                    ">
-                        ${segment.label}
-                    </div>
+                    <div class="segment">
+                        <div class="segment-header" onclick="toggleSegment(${index})">
+                            ▶ ${segment.label}
+                        </div>
+                        <div id="segment-${index}" class="segment-steps hidden">
                 `;
 
                 leg.steps.forEach((step, i) => {
                     segmentHTML += `
-                        <div style="
-                            margin:6px 0;
-                            padding:10px;
-                            background:#f9fafb;
-                            border-radius:8px;
-                            box-shadow:0 1px 3px rgba(0,0,0,0.05);
-                        ">
+                        <div class="step">
                             <strong>${i + 1}.</strong> ${step.instructions}<br>
-                            <span style="color:#666; font-size:12px;">
+                            <span class="step-distance">
                                 ${step.distance.text}
                             </span>
                         </div>
                     `;
                 });
 
-                segmentHTML += "<br>";
+                segmentHTML += `
+                        </div>
+                    </div>
+                `;
 
                 // Store in correct order
                 segmentResults[index] = segmentHTML;
@@ -592,9 +686,15 @@ function drawSegments(segments) {
 
                     const orderedHTML = segmentResults.join("");
 
-                    document.getElementById("route-status").innerHTML =
-                        `<strong>🚲 ${km} km • ⏱️ ${mins} mins</strong><br><br>` +
-                        orderedHTML;
+                    document.getElementById("route-status").innerHTML = `
+                        <div class="route-summary">
+                             🚲 ${km} km • ⏱️ ${mins} mins
+                        </div>
+
+                        <div class="route-overview">
+                            ${orderedHTML}
+                        </div>
+                    `;
 
                     // Show buttons
                     const actions = document.getElementById("route-actions");
@@ -612,6 +712,20 @@ function drawSegments(segments) {
         });
     });
 }
+// Display route overview & details
+function toggleSegment(index) {
+    const el = document.getElementById(`segment-${index}`);
+    const header = el.previousElementSibling;
+
+    if (el.classList.contains("hidden")) {
+        el.classList.remove("hidden");
+        header.innerText = "▼ " + header.innerText.replace("▶ ", "").replace("▼ ", "");
+    } else {
+        el.classList.add("hidden");
+        header.innerText = "▶ " + header.innerText.replace("▶ ", "").replace("▼ ", "");
+    }
+}
+
 // Clear route after use
 function clearRoute() {
     activeRenderers.forEach(renderer => {
@@ -629,6 +743,22 @@ function clearRoute() {
     routeMarkers = [];
     
     document.getElementById("route-status").innerText = "No route selected";
+
+    // Clear start/end markers
+    if (startMarker) {
+        startMarker.setMap(null);
+        startMarker = null;
+    }
+
+    if (endMarker) {
+        endMarker.setMap(null);
+        endMarker = null;
+    }
+
+    // Clear status
+    selectedStart = null;
+    selectedEnd = null;
+
 }
 
 document.addEventListener("DOMContentLoaded", () => {
