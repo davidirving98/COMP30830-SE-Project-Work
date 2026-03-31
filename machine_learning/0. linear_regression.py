@@ -29,9 +29,11 @@ data['day'] = data['day'].astype(int)
 data['hour'] = data['hour'].astype(int)
 data['minute'] = data['minute'].astype(int)
 
-# Cyclical encoding for hour
+# Cyclical encoding for hour and day
 data['hour_sin'] = np.sin(2 * np.pi * data['hour'] / 24)
 data['hour_cos'] = np.cos(2 * np.pi * data['hour'] / 24)
+data['day_sin'] = np.sin(2 * np.pi * (data['day'] - 1) / 31)
+data['day_cos'] = np.cos(2 * np.pi * (data['day'] - 1) / 31)
 
 # Temperature mean
 if 'max_air_temperature_celsius' not in data.columns or 'min_air_temperature_celsius' not in data.columns:
@@ -96,7 +98,8 @@ features = [
     'lat',
     'lon',
     'capacity',
-    'day',
+    'day_sin',
+    'day_cos',
     'hour_sin',
     'hour_cos',
     'minute',
