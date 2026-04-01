@@ -21,25 +21,40 @@
     </div>
 
     <div class="weather-center">
-        <div class="weather-item">
-          ☀️ <span id="temperature">--</span>
-        </div>
+        <!-- Current weather -->
+        <div class="weather-current">
+            <div class="weather-item">
+              ☀️ <span id="temperature">--</span>
+            </div>
 
-        <div class="weather-item">
-            <span id="weather">Loading...</span>
-        </div>
+            <div class="weather-item">
+                <span id="weather">Loading...</span>
+            </div>
 
-        <div class="weather-item">
-            💨 <span id="wind_speed">--</span>
-        </div>
+            <div class="weather-item">
+                💨 <span id="wind_speed">--</span>
+            </div>
 
-        <div class="weather-item">
-            💧 <span id="humidity">--</span>
+            <div class="weather-item">
+                💧 <span id="humidity">--</span>
+            </div>
         </div>
     </div>
-    
     <div class="weather-right">
-      <span>Last Updated:</span>
+        <!-- Forecast weather -->
+        <div class="forecast-card">
+            <div id="forecast1-time">--</div>
+            <div id="forecast1-temp">--</div>
+            <div id="forecast1-desc">--</div>
+            <div id="forecast1-humidity">--</div>
+        </div>
+
+        <div class="forecast-card">
+            <div id="forecast2-time">--</div>
+            <div id="forecast2-temp">--</div>
+            <div id="forecast2-desc">--</div>
+            <div id="forecast2-humidity">--</div>
+        </div>
     </div>
 
   </header>
@@ -247,17 +262,7 @@
   <script>
 
 
-// weather
-async function loadCurrentWeather() {
-    const response = await fetch("/weather");
-    const data = await response.json();
 
-    document.getElementById("temperature").textContent = data.temperature + "°C";
-    document.getElementById("weather").textContent = data.weather;
-    document.getElementById("wind_speed").textContent = data.wind_speed + "m/s";
-    document.getElementById("humidity").textContent = data.humidity + "%";
-}
-loadCurrentWeather();
 </script>
 
 <div id="drawer" class="drawer">
@@ -288,6 +293,7 @@ loadCurrentWeather();
 
     
   </div>
+      <div id="route-container"></div>
   </div>
   
 </body>

@@ -1,5 +1,6 @@
 import requests
 import os
+from datetime import datetime
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
@@ -25,3 +26,33 @@ def get_weather():
 
     return weather
 
+
+def get_forecast():
+    url = (f"https://pro.openweathermap.org/data/2.5/forecast/hourly"
+           f"?lat={LAT}&lon={LON}&appid={OPENWEATHER_API_KEY}&units=metric")
+
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        return None
+
+    data = response.json()
+    forecast_list = data["list"]
+    f1 = forecast_list[0]
+    f3 = forecast_list[2]
+
+    forecast_weather = [
+        {
+            "forecast_time": datetime.fromtimestamp(f1["dt"]).strftime("%H:%M"),
+            "temperature": f1["main"]["temp"],
+            "weather": f1["weather"][0]["main"],
+            "humidity": f1["main"]["humidity"]
+        },
+        {
+            "forecast_time": datetime.fromtimestamp(f3["dt"]).strftime("%H:%M"),
+            "temperature": f3["main"]["temp"],
+            "weather": f3["weather"][0]["main"],
+            "humidity": f3["main"]["humidity"]
+        }
+    ]
+    return forecast_weather
