@@ -17,6 +17,61 @@ let geocoder;
 // Load Google Charts once to speed up
 google.charts.load('current', { packages: ['corechart'] });
 
+function toLocalDatetimeValue(d) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function initPredictControls() {
+    const dtInput = document.getElementById("predict-datetime");
+    const btn = document.getElementById("predict-btn");
+    if (!dtInput || !btn) return;
+
+    // Limit selectable time: now -> now + 7 days
+    const now = new Date();
+    const max = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    dtInput.min = toLocalDatetimeValue(now);
+    dtInput.max = toLocalDatetimeValue(max);
+    dtInput.value = dtInput.min;
+
+    btn.addEventListener("click", predictByInput);
+}
+
+async function predictByInput() {
+    const stationInput = document.getElementById("predict-station-id");
+    const dtInput = document.getElementById("predict-datetime");
+    const resultEl = document.getElementById("predict-result");
+    if (!stationInput || !dtInput || !resultEl) return;
+
+    const stationId = Number(stationInput.value);
+    const dt = dtInput.value; // YYYY-MM-DDTHH:mm
+    if (!stationId || !dt) {
+        resultEl.innerText = "Please enter station number and datetime.";
+        return;
+    }
+
+    // Convert datetime-local to backend format: YYYY-MM-DD HH:MM:SS
+    const dtForApi = `${dt.replace("T", " ")}:00`;
+    const url = `/predict/by-input?station_id=${encodeURIComponent(stationId)}&datetime=${encodeURIComponent(dtForApi)}`;
+
+    resultEl.innerText = "Predicting...";
+    try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!resp.ok) {
+            resultEl.innerText = `Error: ${data.error || "request failed"}`;
+            return;
+        }
+
+        const pred = Array.isArray(data.pred_available_bikes)
+            ? data.pred_available_bikes[0]
+            : data.pred_available_bikes;
+        resultEl.innerText = `Predicted available bikes: ${pred}`;
+    } catch (err) {
+        resultEl.innerText = `Error: ${err.message}`;
+    }
+}
+
 function addMarkers(stations) {
     console.log(stations);
     // Create a marker for each station
@@ -214,6 +269,7 @@ async function loadForecast() {
 document.addEventListener("DOMContentLoaded", () => {
     loadCurrentWeather();
     loadForecast();
+    initPredictControls();
 });
 
 // Initialize and add the map
@@ -510,6 +566,8 @@ function openDrawer(station = null) {
     if (station) {
         currentStation = station;
     document.getElementById("drawer-title").innerText = station.name;
+    const sid = document.getElementById("predict-station-id");
+    if (sid) sid.value = station.number;
 
     } else {
     document.getElementById("drawer-title").innerText = "Route Planner";

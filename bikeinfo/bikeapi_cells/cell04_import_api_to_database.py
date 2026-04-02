@@ -27,7 +27,7 @@ engine = sqla.create_engine(
 INTERVALS_PER_DAY = 144
 INTERVALS_PER_WEEK = 1008
 MIN_PERIODS_1D = INTERVALS_PER_DAY // 2
-MIN_PERIODS_7D = INTERVALS_PER_DAY
+MIN_PERIODS_SAME_SLOT = 3
 
 station_insert = sqla.text("""
 INSERT INTO station (number, contract_name, name, address, lat, lng, banking, bonus, bike_stands)
@@ -46,22 +46,22 @@ ON DUPLICATE KEY UPDATE
 availability_insert = sqla.text("""
 INSERT INTO availability (
     number, available_bike_stands, available_bikes, status, last_update,
-    bikes_1d_mean, bikes_7d_mean
+    bikes_1d_mean, bikes_same_slot_mean
 )
 VALUES (
     :number, :available_bike_stands, :available_bikes, :status, :last_update,
-    :bikes_1d_mean, :bikes_7d_mean
+    :bikes_1d_mean, :bikes_same_slot_mean
 )
 ON DUPLICATE KEY UPDATE
     available_bike_stands = VALUES(available_bike_stands),
     available_bikes = VALUES(available_bikes),
     status = VALUES(status),
     bikes_1d_mean = VALUES(bikes_1d_mean),
-    bikes_7d_mean = VALUES(bikes_7d_mean);
+    bikes_same_slot_mean = VALUES(bikes_same_slot_mean);
 """)
 
 history_query_template = """
-SELECT available_bikes
+SELECT available_bikes, last_update
 FROM availability
 WHERE number = :number AND available_bikes IS NOT NULL
 ORDER BY last_update DESC, id DESC
@@ -80,7 +80,7 @@ LIMIT 1
 
 def ensure_availability_feature_columns():
     with engine.begin() as conn:
-        for col_name in ("bikes_1d_mean", "bikes_7d_mean"):
+        for col_name in ("bikes_1d_mean", "bikes_same_slot_mean"):
             exists = conn.execute(
                 column_exists_sql,
                 {"db_name": DB_NAME, "column_name": col_name},
@@ -102,7 +102,13 @@ def rolling_mean_with_min_periods(values, window_size, min_periods):
     return float(fmean(usable))
 
 
-def get_station_history_means(conn, station_number):
+def mean_with_min_periods(values, min_periods):
+    if len(values) < min_periods:
+        return None
+    return float(fmean(values))
+
+
+def get_station_history_means(conn, station_number, target_time):
     history_rows = conn.execute(
         sqla.text(history_query_template.format(limit=INTERVALS_PER_WEEK)),
         {"number": station_number},
@@ -112,10 +118,18 @@ def get_station_history_means(conn, station_number):
     bikes_1d_mean = rolling_mean_with_min_periods(
         history_values, INTERVALS_PER_DAY, MIN_PERIODS_1D
     )
-    bikes_7d_mean = rolling_mean_with_min_periods(
-        history_values, INTERVALS_PER_WEEK, MIN_PERIODS_7D
+    target_hour = target_time.hour if target_time is not None else None
+    same_hour_values = [
+        row[0]
+        for row in history_rows
+        if row[0] is not None
+        and row[1] is not None
+        and (target_hour is None or row[1].hour == target_hour)
+    ]
+    bikes_same_slot_mean = mean_with_min_periods(
+        same_hour_values, MIN_PERIODS_SAME_SLOT
     )
-    return bikes_1d_mean, bikes_7d_mean
+    return bikes_1d_mean, bikes_same_slot_mean
 
 
 def import_once():
@@ -156,14 +170,16 @@ def import_once():
             "status": s.get("status"),
             "last_update": last_update_dt,
             "bikes_1d_mean": None,
-            "bikes_7d_mean": None,
+            "bikes_same_slot_mean": None,
         })
 
     with engine.begin() as conn:
         for row in availability_rows:
-            bikes_1d_mean, bikes_7d_mean = get_station_history_means(conn, row["number"])
+            bikes_1d_mean, bikes_same_slot_mean = get_station_history_means(
+                conn, row["number"], row["last_update"]
+            )
             row["bikes_1d_mean"] = bikes_1d_mean
-            row["bikes_7d_mean"] = bikes_7d_mean
+            row["bikes_same_slot_mean"] = bikes_same_slot_mean
 
         conn.execute(station_insert, list(station_rows.values()))
         conn.execute(availability_insert, availability_rows)

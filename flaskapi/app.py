@@ -4,6 +4,7 @@ import requests
 import os
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
 import joblib
 import numpy as np
 import pandas as pd
@@ -20,6 +21,7 @@ from bikeinfo_SQL import (
     get_availability_sql,
     get_station_sql,
     get_station_history_sql,
+    get_prediction_db_features,
     save_snapshot,
     get_latest_stations_view,
 )
@@ -43,6 +45,30 @@ except Exception:
     # Keep app bootable even when model artifacts are missing.
     MODEL = None
     MODEL_FEATURES = []
+
+
+def _pick_forecast_for_target(target_dt, forecast_rows):
+    """
+    Choose weather features for a target datetime.
+    - within 96h: nearest forecast point
+    - beyond 96h: latest forecast point with same hour (fallback: latest point)
+    """
+    if not forecast_rows:
+        return None
+
+    now = datetime.now()
+    if target_dt > now + timedelta(hours=96):
+        same_hour_rows = [
+            row for row in forecast_rows
+            if datetime.fromtimestamp(int(row.get("dt", 0))).hour == target_dt.hour
+        ]
+        return same_hour_rows[-1] if same_hour_rows else forecast_rows[-1]
+
+    target_ts = target_dt.timestamp()
+    return min(
+        forecast_rows,
+        key=lambda row: abs(float(row.get("dt", 0)) - target_ts),
+    )
 
 
 @app.route("/")
@@ -143,15 +169,10 @@ def station_history(station_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# This function calls machine learning model to predict the available bikes for a specific station and datetime.
 @app.route("/predict", methods=["POST"])
 def predict():
-    """
-    Predict available bikes from provided feature payload.
-    Accepts either:
-    - a single JSON object
-    - a JSON array of objects
-    """
+
     try:
         if MODEL is None:
             return jsonify({"error": "Model not loaded. Train/save model first."}), 500
@@ -170,9 +191,9 @@ def predict():
         X = df[MODEL_FEATURES]
         raw_pred = MODEL.predict(X)
 
-        # Business post-processing:
-        # 1) avoid false positive dispatch: prediction < 4 => 0
-        pred = np.where(raw_pred < 4, 0, raw_pred)
+        #  post-processing:
+        # 1) avoid false positive dispatch: prediction < 3 => 0
+        pred = np.where(raw_pred < 3, 0, raw_pred)
 
         # 2) keep prediction in [0, capacity] if capacity is provided
         if "capacity" in df.columns:
@@ -186,6 +207,65 @@ def predict():
             {
                 "target": MODEL_TARGET,
                 "features": MODEL_FEATURES,
+                "raw_pred": raw_pred.tolist(),
+                "pred_available_bikes": pred.tolist(),
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/predict/by-input", methods=["GET"])
+def predict_by_input():
+    try:
+        if MODEL is None:
+            return jsonify({"error": "Model not loaded. Train/save model first."}), 500
+
+        station_id = int(request.args["station_id"])
+        target_dt = datetime.strptime(request.args["datetime"], "%Y-%m-%d %H:%M:%S")
+
+        db_feat = get_prediction_db_features(station_id, target_dt)
+        if not db_feat:
+            return jsonify({"error": f"Station {station_id} not found"}), 404
+
+        forecast_rows = get_forecast(full_series=True)
+        weather = _pick_forecast_for_target(target_dt, forecast_rows)
+        capacity = float(db_feat.get("capacity") or 0)
+        humidity_bin = 1 if float(weather.get("humidity") or 0) > 90 else 0
+
+        row = {
+            "number": int(db_feat.get("number", station_id)),
+            "capacity": capacity,
+            "day": int(target_dt.day),
+            "hour": int(target_dt.hour),
+            "minute": int(target_dt.minute),
+            "temp": float(weather.get("temperature")),
+            "pressure": float(weather.get("pressure")),
+            "humidity": int(humidity_bin),
+            "lng": float(db_feat.get("lng")),
+            "lat": float(db_feat.get("lat")),
+            "bikes_1d_mean": float(db_feat.get("bikes_1d_mean") or 0),
+            "bikes_same_slot_mean": float(db_feat.get("bikes_same_slot_mean") or 0),
+        }
+
+        X = pd.DataFrame([row])[MODEL_FEATURES]
+        raw_pred = MODEL.predict(X)
+
+        # Prediction limit to avoid false positive dispatch and availability qty over capacity .
+        pred = np.where(raw_pred < 3, 0, raw_pred)
+        pred = np.clip(pred, 0, capacity if capacity > 0 else None)
+        pred = np.rint(pred).astype(int)
+
+        return jsonify(
+            {
+                "station_id": station_id,
+                "datetime": target_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "features": MODEL_FEATURES,
+                "feature_values": row,
+                "weather_source": {
+                    "mode": "forecast",
+                    "selected_forecast_time": weather.get("forecast_time"),
+                },
                 "raw_pred": raw_pred.tolist(),
                 "pred_available_bikes": pred.tolist(),
             }

@@ -34,7 +34,7 @@ FEATURE_SCHEMA = [
     "pressure",
     "humidity",
     "bikes_1d_mean",
-    "bikes_7d_mean",
+    "bikes_same_slot_mean",
 ]
 
 TARGET_COLUMN = "num_bikes_available"
@@ -52,7 +52,7 @@ FEATURE_DTYPES: Dict[str, str] = {
     "pressure": "float64",
     "humidity": "int64",
     "bikes_1d_mean": "float64",
-    "bikes_7d_mean": "float64",
+    "bikes_same_slot_mean": "float64",
 }
 
 
@@ -141,7 +141,7 @@ def prepare_inference_features(
     pressure: float,
     humidity: float,
     bikes_1d_mean: float,
-    bikes_7d_mean: float,
+    bikes_same_slot_mean: float,
 ) -> pd.DataFrame:
     """Build one-row canonical inference dataframe."""
     ts = pd.Timestamp(dt)
@@ -155,7 +155,7 @@ def prepare_inference_features(
         "pressure": pressure,
         "humidity": humidity,
         "bikes_1d_mean": bikes_1d_mean,
-        "bikes_7d_mean": bikes_7d_mean,
+        "bikes_same_slot_mean": bikes_same_slot_mean,
     }
     out = pd.DataFrame([row])
     out = _coerce_dtypes(out, FEATURE_DTYPES)
