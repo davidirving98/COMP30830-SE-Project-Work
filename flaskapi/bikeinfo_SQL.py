@@ -86,6 +86,40 @@ def get_station_history_sql(station_id):
     return _fetch_all(sql, {"station_id": station_id})
 
 
+def get_prediction_db_features(station_id, target_time):
+    """
+    Build DB-derived model features for one station at target_time:
+    - number, capacity(bike_stands), lat, lng
+    - bikes_1d_mean, bikes_same_slot_mean from availability history prior to target_time
+    """
+    sql = """
+    SELECT
+        s.number AS number,
+        s.bike_stands AS capacity,
+        s.lat AS lat,
+        s.lng AS lng,
+        (
+            SELECT AVG(a1.available_bikes)
+            FROM availability a1
+            WHERE a1.number = s.number
+              AND a1.last_update < :target_time
+              AND a1.last_update >= DATE_SUB(:target_time, INTERVAL 1 DAY)
+        ) AS bikes_1d_mean,
+        (
+            SELECT AVG(aslot.available_bikes)
+            FROM availability aslot
+            WHERE aslot.number = s.number
+              AND aslot.last_update < :target_time
+              AND HOUR(aslot.last_update) = HOUR(:target_time)
+        ) AS bikes_same_slot_mean
+    FROM station s
+    WHERE s.number = :station_id
+    LIMIT 1
+    """
+    rows = _fetch_all(sql, {"station_id": station_id, "target_time": target_time})
+    return rows[0] if rows else None
+
+
 # get latest view data from database, which is updated every time the front page loads and fetches new data from API
 def get_latest_stations_view():
     sql = """

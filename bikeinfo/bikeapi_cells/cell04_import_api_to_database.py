@@ -4,6 +4,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 import sqlalchemy as sqla
 from pathlib import Path
 import time
+from statistics import fmean
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = PROJECT_ROOT / "config.py"
@@ -23,6 +24,11 @@ engine = sqla.create_engine(
     f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{DB_NAME}"
 )
 
+INTERVALS_PER_DAY = 144
+INTERVALS_PER_WEEK = 1008
+MIN_PERIODS_1D = INTERVALS_PER_DAY // 2
+MIN_PERIODS_SAME_SLOT = 3
+
 station_insert = sqla.text("""
 INSERT INTO station (number, contract_name, name, address, lat, lng, banking, bonus, bike_stands)
 VALUES (:number, :contract_name, :name, :address, :lat, :lng, :banking, :bonus, :bike_stands)
@@ -38,13 +44,92 @@ ON DUPLICATE KEY UPDATE
 """)
 
 availability_insert = sqla.text("""
-INSERT INTO availability (number, available_bike_stands, available_bikes, status, last_update)
-VALUES (:number, :available_bike_stands, :available_bikes, :status, :last_update)
+INSERT INTO availability (
+    number, available_bike_stands, available_bikes, status, last_update,
+    bikes_1d_mean, bikes_same_slot_mean
+)
+VALUES (
+    :number, :available_bike_stands, :available_bikes, :status, :last_update,
+    :bikes_1d_mean, :bikes_same_slot_mean
+)
 ON DUPLICATE KEY UPDATE
     available_bike_stands = VALUES(available_bike_stands),
     available_bikes = VALUES(available_bikes),
-    status = VALUES(status);
+    status = VALUES(status),
+    bikes_1d_mean = VALUES(bikes_1d_mean),
+    bikes_same_slot_mean = VALUES(bikes_same_slot_mean);
 """)
+
+history_query_template = """
+SELECT available_bikes, last_update
+FROM availability
+WHERE number = :number AND available_bikes IS NOT NULL
+ORDER BY last_update DESC, id DESC
+LIMIT {limit}
+"""
+
+column_exists_sql = sqla.text("""
+SELECT 1
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = :db_name
+  AND TABLE_NAME = 'availability'
+  AND COLUMN_NAME = :column_name
+LIMIT 1
+""")
+
+
+def ensure_availability_feature_columns():
+    with engine.begin() as conn:
+        for col_name in ("bikes_1d_mean", "bikes_same_slot_mean"):
+            exists = conn.execute(
+                column_exists_sql,
+                {"db_name": DB_NAME, "column_name": col_name},
+            ).fetchone()
+            if exists:
+                continue
+            conn.execute(
+                sqla.text(
+                    f"ALTER TABLE availability ADD COLUMN {col_name} DOUBLE NULL"
+                )
+            )
+            print(f"Added column availability.{col_name}", flush=True)
+
+
+def rolling_mean_with_min_periods(values, window_size, min_periods):
+    usable = values[:window_size]
+    if len(usable) < min_periods:
+        return None
+    return float(fmean(usable))
+
+
+def mean_with_min_periods(values, min_periods):
+    if len(values) < min_periods:
+        return None
+    return float(fmean(values))
+
+
+def get_station_history_means(conn, station_number, target_time):
+    history_rows = conn.execute(
+        sqla.text(history_query_template.format(limit=INTERVALS_PER_WEEK)),
+        {"number": station_number},
+    ).fetchall()
+    history_values = [row[0] for row in history_rows if row[0] is not None]
+
+    bikes_1d_mean = rolling_mean_with_min_periods(
+        history_values, INTERVALS_PER_DAY, MIN_PERIODS_1D
+    )
+    target_hour = target_time.hour if target_time is not None else None
+    same_hour_values = [
+        row[0]
+        for row in history_rows
+        if row[0] is not None
+        and row[1] is not None
+        and (target_hour is None or row[1].hour == target_hour)
+    ]
+    bikes_same_slot_mean = mean_with_min_periods(
+        same_hour_values, MIN_PERIODS_SAME_SLOT
+    )
+    return bikes_1d_mean, bikes_same_slot_mean
 
 
 def import_once():
@@ -57,7 +142,7 @@ def import_once():
     availability_rows = []
 
     for s in data:
-        number = s.get("number") #primary key for station and foreign key for availability, so if missing just drop the record
+        number = s.get("number")  # primary key for station and foreign key for availability
         if number is None:
             continue
 
@@ -84,16 +169,29 @@ def import_once():
             "available_bikes": s.get("available_bikes"),
             "status": s.get("status"),
             "last_update": last_update_dt,
+            "bikes_1d_mean": None,
+            "bikes_same_slot_mean": None,
         })
 
     with engine.begin() as conn:
+        for row in availability_rows:
+            bikes_1d_mean, bikes_same_slot_mean = get_station_history_means(
+                conn, row["number"], row["last_update"]
+            )
+            row["bikes_1d_mean"] = bikes_1d_mean
+            row["bikes_same_slot_mean"] = bikes_same_slot_mean
+
         conn.execute(station_insert, list(station_rows.values()))
         conn.execute(availability_insert, availability_rows)
 
-    print(f"API import completed: stations={len(station_rows)}, availability={len(availability_rows)}", flush=True)
+    print(
+        f"API import completed: stations={len(station_rows)}, availability={len(availability_rows)}",
+        flush=True,
+    )
 
 
 INTERVAL_SECONDS = 300  # 5 minutes
+ensure_availability_feature_columns()
 print("Start importer: run every 5 minutes. Press Ctrl+C to stop.", flush=True)
 while True:
     started_at = datetime.now(timezone.utc)

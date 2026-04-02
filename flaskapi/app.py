@@ -1,15 +1,19 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 import requests
 import os
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
+import joblib
+import numpy as np
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 import config
-from openweather import get_weather
+from openweather import get_weather, get_forecast
 
 from jcdecaux import get_stations, get_station, fetch_stations_raw
 from bikeinfo_SQL import (
@@ -17,11 +21,54 @@ from bikeinfo_SQL import (
     get_availability_sql,
     get_station_sql,
     get_station_history_sql,
+    get_prediction_db_features,
     save_snapshot,
     get_latest_stations_view,
 )
 
 app = Flask(__name__)
+
+# ---- ML model (loaded once at startup) ----
+MODEL_PATH = PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model.joblib"
+META_PATH = PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model_meta.joblib"
+
+MODEL = None
+MODEL_FEATURES = []
+MODEL_TARGET = "available_bikes"
+
+try:
+    MODEL = joblib.load(MODEL_PATH)
+    meta = joblib.load(META_PATH)
+    MODEL_FEATURES = list(meta.get("features", []))
+    MODEL_TARGET = str(meta.get("target", MODEL_TARGET))
+except Exception:
+    # Keep app bootable even when model artifacts are missing.
+    MODEL = None
+    MODEL_FEATURES = []
+
+
+def _pick_forecast_for_target(target_dt, forecast_rows):
+    """
+    Choose weather features for a target datetime.
+    - within 96h: nearest forecast point
+    - beyond 96h: latest forecast point with same hour (fallback: latest point)
+    """
+    if not forecast_rows:
+        return None
+
+    now = datetime.now()
+    if target_dt > now + timedelta(hours=96):
+        same_hour_rows = [
+            row for row in forecast_rows
+            if datetime.fromtimestamp(int(row.get("dt", 0))).hour == target_dt.hour
+        ]
+        return same_hour_rows[-1] if same_hour_rows else forecast_rows[-1]
+
+    target_ts = target_dt.timestamp()
+    return min(
+        forecast_rows,
+        key=lambda row: abs(float(row.get("dt", 0)) - target_ts),
+    )
 
 
 @app.route("/")
@@ -59,6 +106,15 @@ def weather():
 
     if data is None:
         return jsonify({"error": "Weather API unavailable"}), 500
+
+    return jsonify(data)
+
+@app.route("/forecast")
+def forecast():
+    data = get_forecast()
+
+    if data is None:
+        return jsonify({"error": "Forecast API unavailable"}), 500
 
     return jsonify(data)
 
@@ -110,6 +166,146 @@ def station_sql_info(station_id):
 def station_history(station_id):
     try:
         return jsonify(get_station_history_sql(station_id))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# This function calls machine learning model to predict the available bikes for a specific station and datetime.
+@app.route("/predict", methods=["POST"])
+def predict():
+
+    try:
+        if MODEL is None:
+            return jsonify({"error": "Model not loaded. Train/save model first."}), 500
+
+        payload = request.get_json(force=True, silent=True)
+        if payload is None:
+            return jsonify({"error": "Invalid JSON body"}), 400
+
+        rows = payload if isinstance(payload, list) else [payload]
+        df = pd.DataFrame(rows)
+
+        missing = [c for c in MODEL_FEATURES if c not in df.columns]
+        if missing:
+            return jsonify({"error": f"Missing features: {missing}"}), 400
+
+        X = df[MODEL_FEATURES]
+        raw_pred = MODEL.predict(X)
+
+        # Business post-processing:
+        # 1) avoid false positive dispatch: prediction < 4 => 0
+        pred = np.where(raw_pred < 4, 0, raw_pred)
+
+        # 2) keep prediction in [0, capacity] if capacity is provided
+        if "capacity" in df.columns:
+            pred = np.clip(pred, 0, df["capacity"].to_numpy())
+        else:
+            pred = np.clip(pred, 0, None)
+
+        pred = np.rint(pred).astype(int)
+
+        return jsonify(
+            {
+                "target": MODEL_TARGET,
+                "features": MODEL_FEATURES,
+                "raw_pred": raw_pred.tolist(),
+                "pred_available_bikes": pred.tolist(),
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/predict/by-input", methods=["GET"])
+def predict_by_input():
+    """
+    Build features from DB + weather API using:
+      - station_id
+      - datetime (YYYY-MM-DD HH:MM:SS)
+    then run model prediction.
+    """
+    try:
+        if MODEL is None:
+            return jsonify({"error": "Model not loaded. Train/save model first."}), 500
+
+        station_id_raw = request.args.get("station_id", "").strip()
+        dt_raw = request.args.get("datetime", "").strip()
+        if not station_id_raw or not dt_raw:
+            return jsonify({"error": "Missing required query params: station_id, datetime"}), 400
+
+        try:
+            station_id = int(station_id_raw)
+        except ValueError:
+            return jsonify({"error": "station_id must be an integer"}), 400
+
+        try:
+            target_dt = datetime.strptime(dt_raw, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return jsonify({"error": "datetime must be in format YYYY-MM-DD HH:MM:SS"}), 400
+
+        # Keep API contract aligned with frontend: max 7 days from now.
+        now = datetime.now()
+        if target_dt > now + timedelta(days=7):
+            return jsonify({"error": "datetime cannot be later than 7 days from now"}), 400
+
+        db_feat = get_prediction_db_features(station_id, target_dt)
+        if not db_feat:
+            return jsonify({"error": f"Station {station_id} not found"}), 404
+
+        forecast_rows = get_forecast(full_series=True)
+        if not forecast_rows:
+            return jsonify({"error": "Forecast API unavailable"}), 500
+        weather = _pick_forecast_for_target(target_dt, forecast_rows)
+        if not weather:
+            return jsonify({"error": "No usable forecast data"}), 500
+
+        # Build feature row using model schema.
+        # Any missing value is filled with conservative fallback to keep endpoint robust.
+        capacity = float(db_feat.get("capacity") or 0)
+        humidity_raw = weather.get("humidity")
+        humidity_bin = 1 if (humidity_raw is not None and float(humidity_raw) > 90) else 0
+
+        row = {
+            "number": int(db_feat.get("number", station_id)),
+            "capacity": capacity,
+            "day": int(target_dt.day),
+            "hour": int(target_dt.hour),
+            "minute": int(target_dt.minute),
+            "temp": float(weather.get("temperature") if weather.get("temperature") is not None else 18),
+            "pressure": float(weather.get("pressure") if weather.get("pressure") is not None else 1013),
+            "humidity": int(humidity_bin),
+            "lng": float(db_feat.get("lng") if db_feat.get("lng") is not None else 0),
+            "lat": float(db_feat.get("lat") if db_feat.get("lat") is not None else 0),
+            "bikes_1d_mean": float(db_feat.get("bikes_1d_mean") if db_feat.get("bikes_1d_mean") is not None else 0),
+            "bikes_same_slot_mean": float(db_feat.get("bikes_same_slot_mean") if db_feat.get("bikes_same_slot_mean") is not None else 0),
+        }
+
+        # Ensure all model features exist.
+        for feat in MODEL_FEATURES:
+            if feat not in row:
+                row[feat] = 0
+
+        X = pd.DataFrame([row])[MODEL_FEATURES]
+        raw_pred = MODEL.predict(X)
+
+        # Prediction limit to avoid false positive dispatch and availability qty over capacity .
+        pred = np.where(raw_pred < 3, 0, raw_pred)
+        pred = np.clip(pred, 0, capacity if capacity > 0 else None)
+        pred = np.rint(pred).astype(int)
+
+        return jsonify(
+            {
+                "station_id": station_id,
+                "datetime": target_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "features": MODEL_FEATURES,
+                "feature_values": row,
+                "weather_source": {
+                    "mode": "forecast",
+                    "selected_forecast_time": weather.get("forecast_time"),
+                },
+                "raw_pred": raw_pred.tolist(),
+                "pred_available_bikes": pred.tolist(),
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
