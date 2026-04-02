@@ -191,9 +191,9 @@ def predict():
         X = df[MODEL_FEATURES]
         raw_pred = MODEL.predict(X)
 
-        # Business post-processing:
-        # 1) avoid false positive dispatch: prediction < 4 => 0
-        pred = np.where(raw_pred < 4, 0, raw_pred)
+        #  post-processing:
+        # 1) avoid false positive dispatch: prediction < 3 => 0
+        pred = np.where(raw_pred < 3, 0, raw_pred)
 
         # 2) keep prediction in [0, capacity] if capacity is provided
         if "capacity" in df.columns:
@@ -217,52 +217,21 @@ def predict():
 
 @app.route("/predict/by-input", methods=["GET"])
 def predict_by_input():
-    """
-    Build features from DB + weather API using:
-      - station_id
-      - datetime (YYYY-MM-DD HH:MM:SS)
-    then run model prediction.
-    """
     try:
         if MODEL is None:
             return jsonify({"error": "Model not loaded. Train/save model first."}), 500
 
-        station_id_raw = request.args.get("station_id", "").strip()
-        dt_raw = request.args.get("datetime", "").strip()
-        if not station_id_raw or not dt_raw:
-            return jsonify({"error": "Missing required query params: station_id, datetime"}), 400
-
-        try:
-            station_id = int(station_id_raw)
-        except ValueError:
-            return jsonify({"error": "station_id must be an integer"}), 400
-
-        try:
-            target_dt = datetime.strptime(dt_raw, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            return jsonify({"error": "datetime must be in format YYYY-MM-DD HH:MM:SS"}), 400
-
-        # Keep API contract aligned with frontend: max 7 days from now.
-        now = datetime.now()
-        if target_dt > now + timedelta(days=7):
-            return jsonify({"error": "datetime cannot be later than 7 days from now"}), 400
+        station_id = int(request.args["station_id"])
+        target_dt = datetime.strptime(request.args["datetime"], "%Y-%m-%d %H:%M:%S")
 
         db_feat = get_prediction_db_features(station_id, target_dt)
         if not db_feat:
             return jsonify({"error": f"Station {station_id} not found"}), 404
 
         forecast_rows = get_forecast(full_series=True)
-        if not forecast_rows:
-            return jsonify({"error": "Forecast API unavailable"}), 500
         weather = _pick_forecast_for_target(target_dt, forecast_rows)
-        if not weather:
-            return jsonify({"error": "No usable forecast data"}), 500
-
-        # Build feature row using model schema.
-        # Any missing value is filled with conservative fallback to keep endpoint robust.
         capacity = float(db_feat.get("capacity") or 0)
-        humidity_raw = weather.get("humidity")
-        humidity_bin = 1 if (humidity_raw is not None and float(humidity_raw) > 90) else 0
+        humidity_bin = 1 if float(weather.get("humidity") or 0) > 90 else 0
 
         row = {
             "number": int(db_feat.get("number", station_id)),
@@ -270,19 +239,14 @@ def predict_by_input():
             "day": int(target_dt.day),
             "hour": int(target_dt.hour),
             "minute": int(target_dt.minute),
-            "temp": float(weather.get("temperature") if weather.get("temperature") is not None else 18),
-            "pressure": float(weather.get("pressure") if weather.get("pressure") is not None else 1013),
+            "temp": float(weather.get("temperature")),
+            "pressure": float(weather.get("pressure")),
             "humidity": int(humidity_bin),
-            "lng": float(db_feat.get("lng") if db_feat.get("lng") is not None else 0),
-            "lat": float(db_feat.get("lat") if db_feat.get("lat") is not None else 0),
-            "bikes_1d_mean": float(db_feat.get("bikes_1d_mean") if db_feat.get("bikes_1d_mean") is not None else 0),
-            "bikes_same_slot_mean": float(db_feat.get("bikes_same_slot_mean") if db_feat.get("bikes_same_slot_mean") is not None else 0),
+            "lng": float(db_feat.get("lng")),
+            "lat": float(db_feat.get("lat")),
+            "bikes_1d_mean": float(db_feat.get("bikes_1d_mean") or 0),
+            "bikes_same_slot_mean": float(db_feat.get("bikes_same_slot_mean") or 0),
         }
-
-        # Ensure all model features exist.
-        for feat in MODEL_FEATURES:
-            if feat not in row:
-                row[feat] = 0
 
         X = pd.DataFrame([row])[MODEL_FEATURES]
         raw_pred = MODEL.predict(X)
