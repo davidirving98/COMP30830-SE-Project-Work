@@ -1,9 +1,12 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 import requests
 import os
 import sys
 from pathlib import Path
+import joblib
+import numpy as np
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -22,6 +25,24 @@ from bikeinfo_SQL import (
 )
 
 app = Flask(__name__)
+
+# ---- ML model (loaded once at startup) ----
+MODEL_PATH = PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model.joblib"
+META_PATH = PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model_meta.joblib"
+
+MODEL = None
+MODEL_FEATURES = []
+MODEL_TARGET = "available_bikes"
+
+try:
+    MODEL = joblib.load(MODEL_PATH)
+    meta = joblib.load(META_PATH)
+    MODEL_FEATURES = list(meta.get("features", []))
+    MODEL_TARGET = str(meta.get("target", MODEL_TARGET))
+except Exception:
+    # Keep app bootable even when model artifacts are missing.
+    MODEL = None
+    MODEL_FEATURES = []
 
 
 @app.route("/")
@@ -119,6 +140,56 @@ def station_sql_info(station_id):
 def station_history(station_id):
     try:
         return jsonify(get_station_history_sql(station_id))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    """
+    Predict available bikes from provided feature payload.
+    Accepts either:
+    - a single JSON object
+    - a JSON array of objects
+    """
+    try:
+        if MODEL is None:
+            return jsonify({"error": "Model not loaded. Train/save model first."}), 500
+
+        payload = request.get_json(force=True, silent=True)
+        if payload is None:
+            return jsonify({"error": "Invalid JSON body"}), 400
+
+        rows = payload if isinstance(payload, list) else [payload]
+        df = pd.DataFrame(rows)
+
+        missing = [c for c in MODEL_FEATURES if c not in df.columns]
+        if missing:
+            return jsonify({"error": f"Missing features: {missing}"}), 400
+
+        X = df[MODEL_FEATURES]
+        raw_pred = MODEL.predict(X)
+
+        # Business post-processing:
+        # 1) avoid false positive dispatch: prediction < 4 => 0
+        pred = np.where(raw_pred < 4, 0, raw_pred)
+
+        # 2) keep prediction in [0, capacity] if capacity is provided
+        if "capacity" in df.columns:
+            pred = np.clip(pred, 0, df["capacity"].to_numpy())
+        else:
+            pred = np.clip(pred, 0, None)
+
+        pred = np.rint(pred).astype(int)
+
+        return jsonify(
+            {
+                "target": MODEL_TARGET,
+                "features": MODEL_FEATURES,
+                "raw_pred": raw_pred.tolist(),
+                "pred_available_bikes": pred.tolist(),
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
