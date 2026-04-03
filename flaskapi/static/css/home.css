@@ -43,11 +43,16 @@ footer {
   padding: 0 20px;
   font-size: 14px;
 }
+.weather-left {
+  flex: 1;
+}
 
 .weather-center {
   display: flex;
   gap: 25px;
   align-items: center;
+  justify-content: center;
+  flex: 2;
 }
 
 .weather-item {
@@ -60,6 +65,54 @@ footer {
 .weather-right {
   color: #666;
   font-size: 13px;
+}
+
+.weather-current {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+#temperature {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+#weather {
+  color: #555;
+}
+
+.weather-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.forecast-card {
+  background: #f5f6f8;
+  padding: 8px 12px;
+  border-radius: 10px;
+  min-width: 80px;
+  font-size: 12px;
+}
+
+.forecast-card div:nth-child(1) {
+  color: #666;
+  font-size: 11px;
+}
+
+.forecast-card div:nth-child(2) {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.forecast-card div:nth-child(3) {
+  color: #555;
+}
+
+.forecast-card div:nth-child(4) {
+  color: #6aaefc;
 }
 
 
@@ -524,4 +577,91 @@ button:hover {
 
 #route-actions button:hover {
   background: rgba(255,255,255,0.35);
+}
+
+.hidden {
+  display: none;
+}
+
+.route-summary {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.route-overview {
+  margin-top: 8px;
+}
+
+.segment {
+  margin-bottom: 10px;
+}
+
+.segment-header {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px 12px;
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.segment-header:hover {
+  background: #e2e8f0;
+}
+
+.segment-steps {
+  margin-top: 8px;
+}
+
+.step {
+  margin: 6px 0;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.step-distance {
+  color: #666;
+  font-size: 12px;
+}
+
+.map-popup {
+    min-width: 200px;
+    padding: 12px;
+    font-family: Arial, sans-serif;
+}
+
+.popup-text {
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.popup-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn.secondary {
+    background: #f1f3f4;
+}
+
+.btn.primary {
+    background: #1a73e8;
+    color: white;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
 }
