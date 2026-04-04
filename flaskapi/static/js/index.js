@@ -481,7 +481,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function closeModal() {
         welcomeModal.style.display = "none";
     }
-    
+
+    // Open modal
     function openModal() {
         welcomeModal.style.display = "flex";
     }
