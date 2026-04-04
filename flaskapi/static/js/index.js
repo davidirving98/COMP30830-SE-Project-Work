@@ -136,7 +136,8 @@ function addMarkers(stations) {
                     const history = await response.json();
                     historyRows = history
                         .map((item) => {
-                            const ts = new Date(String(item.last_update).replace(" ", "T"));
+                            // DB stores UTC naive datetime text, so append 'Z' to parse as UTC.
+                            const ts = new Date(`${String(item.last_update).replace(" ", "T")}Z`);
                             if (!Number.isFinite(ts.getTime())) {
                                 return null;
                             }
