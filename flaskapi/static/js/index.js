@@ -469,6 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const welcomeModal = document.getElementById("welcome-modal");
     const closeWelcome = document.getElementById("close-welcome");
     const startBtn = document.getElementById("start-btn");
+    const howItWorksBtn = document.getElementById("how-it-works-btn");
 
     // Show modal when page first loads only
     if (!localStorage.getItem("wheelyWelcomeSeen")) {
@@ -480,9 +481,18 @@ document.addEventListener("DOMContentLoaded", () => {
     function closeModal() {
         welcomeModal.style.display = "none";
     }
+    
+    function openModal() {
+        welcomeModal.style.display = "flex";
+    }
 
     closeWelcome.addEventListener("click", closeModal);
     startBtn.addEventListener("click", closeModal);
+    
+    // Reopen modal when clicked
+    if (howItWorksBtn) {
+        howItWorksBtn.addEventListener("click", openModal);
+    }
 });
 
 
