@@ -1,5 +1,7 @@
 # Unit Test Guide
 
+> Last updated: 2026-04-06
+
 本文档用于解释当前 `tests/` 目录中每个测试文件的覆盖范围、测试条件和通过判定，帮助你在执行测试时快速判断“哪些功能通过了、为什么通过”。
 
 ## 1. 如何看测试通过信息
@@ -18,6 +20,12 @@
 
 ```bash
 pytest -s tests/
+```
+
+如需快速总览：
+
+```bash
+pytest -q tests/
 ```
 
 ## 2. 推荐执行顺序
@@ -265,3 +273,24 @@ pytest -s tests/test_openweather_jcdecaux_p0.py | rg "PASS \[P0\]\[External API 
 ```
 
 这样可以直接按模块查看已通过的功能点。
+
+## 6. 与 ML Notebook 对齐说明（新增）
+
+近期 `machine_learning/ML.ipynb` 已更新为 70/30 时间顺序切分评估，并在模型训练后统一保存模型文件。以下产物命名已与项目现有文件保持一致：
+
+- `decision_tree_model.joblib`
+- `decision_tree_model.pkl`
+- `linear_regression_lag_model.joblib`
+- `linear_regression_lag_model_meta.joblib`
+- `random_forest_model.joblib`
+- `random_forest_model.pkl`
+- `ridge_regression_model.joblib`
+- `ridge_regression_model.pkl`
+- `svr_model.joblib`
+- `svr_model.pkl`
+
+说明：
+
+1. 上述模型文件由 Notebook 训练流程生成，不属于 `pytest tests/` 的直接断言产物。  
+2. 运行与模型文件强相关的测试前，建议先确认模型文件路径和命名一致。  
+3. `linear_regression_lag_model_meta.joblib` 用于保存 `features/target` 元信息，便于预测侧按同一特征顺序加载。  

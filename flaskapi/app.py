@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, render_template, request
 
-import requests
 import os
 import sys
 from pathlib import Path
@@ -15,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import config
 from openweather import get_weather, get_forecast
 
-from jcdecaux import get_stations, get_station, fetch_stations_raw
+from jcdecaux import get_station, fetch_stations_raw
 from bikeinfo_SQL import (
     get_stations_sql,
     get_availability_sql,
@@ -29,8 +28,12 @@ from bikeinfo_SQL import (
 app = Flask(__name__)
 
 # ---- ML model (loaded once at startup) ----
-MODEL_PATH = PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model.joblib"
-META_PATH = PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model_meta.joblib"
+# Use Ridge model by default (more stable than plain LinearRegression here).
+MODEL_PATH = PROJECT_ROOT / "machine_learning" / "ridge_regression_model.joblib"
+META_PATH_CANDIDATES = [
+    PROJECT_ROOT / "machine_learning" / "ridge_regression_model_meta.joblib",
+    PROJECT_ROOT / "machine_learning" / "linear_regression_lag_model_meta.joblib",
+]
 
 MODEL = None
 MODEL_FEATURES = []
@@ -38,13 +41,54 @@ MODEL_TARGET = "available_bikes"
 
 try:
     MODEL = joblib.load(MODEL_PATH)
-    meta = joblib.load(META_PATH)
-    MODEL_FEATURES = list(meta.get("features", []))
-    MODEL_TARGET = str(meta.get("target", MODEL_TARGET))
+    for mp in META_PATH_CANDIDATES:
+        if mp.exists():
+            meta = joblib.load(mp)
+            MODEL_FEATURES = list(meta.get("features", []))
+            MODEL_TARGET = str(meta.get("target", MODEL_TARGET))
+            break
 except Exception:
     # Keep app bootable even when model artifacts are missing.
     MODEL = None
     MODEL_FEATURES = []
+
+
+def _effective_model_features():
+    """Prefer estimator-native feature names when available."""
+    if MODEL is not None and hasattr(MODEL, "feature_names_in_"):
+        return list(MODEL.feature_names_in_)
+    return list(MODEL_FEATURES)
+
+
+def _build_prediction_matrix(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Align request rows to the exact feature order expected by the fitted model.
+    Supports one-hot station columns (number_*) when raw 'number' is provided.
+    """
+    expected = _effective_model_features()
+    if not expected:
+        raise ValueError("Model feature metadata is empty.")
+
+    work = df.copy()
+    has_station_onehot = any(c.startswith("number_") for c in expected)
+    raw_number_used = "number" in expected
+
+    # Convert raw station number -> one-hot columns expected by model.
+    if has_station_onehot and not raw_number_used:
+        if "number" not in work.columns:
+            raise ValueError("Missing required feature: number")
+        station_as_str = (
+            pd.to_numeric(work["number"], errors="coerce").astype("Int64").astype(str)
+        )
+        for col in [c for c in expected if c.startswith("number_")]:
+            station_token = col[len("number_") :]
+            work[col] = (station_as_str == station_token).astype(int)
+
+    for c in expected:
+        if c not in work.columns:
+            work[c] = 0
+
+    return work[expected]
 
 
 def _pick_forecast_for_target(target_dt, forecast_rows):
@@ -69,6 +113,58 @@ def _pick_forecast_for_target(target_dt, forecast_rows):
         forecast_rows,
         key=lambda row: abs(float(row.get("dt", 0)) - target_ts),
     )
+
+
+def _predict_post_process(raw_pred, capacity=None):
+    """Apply common prediction post-processing rules."""
+    pred = np.where(raw_pred < 3, 0, raw_pred)
+    pred = np.clip(pred, 0, capacity if capacity is not None else None)
+    return np.rint(pred).astype(int)
+
+
+def _parse_predict_query_args(args):
+    """Parse and validate /predict/by-input query args."""
+    station_id_raw = args.get("station_id")
+    dt_raw = args.get("datetime")
+    if not station_id_raw or not dt_raw:
+        return None, None, (
+            jsonify(
+                {
+                    "error": "Missing required query params: station_id, datetime",
+                    "expected_datetime_format": "%Y-%m-%d %H:%M:%S",
+                }
+            ),
+            400,
+        )
+
+    try:
+        station_id = int(station_id_raw)
+    except (TypeError, ValueError):
+        return None, None, (jsonify({"error": "station_id must be an integer"}), 400)
+
+    try:
+        target_dt = datetime.strptime(dt_raw, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None, None, (
+            jsonify(
+                {
+                    "error": "Invalid datetime format",
+                    "expected_datetime_format": "%Y-%m-%d %H:%M:%S",
+                }
+            ),
+            400,
+        )
+    return station_id, target_dt, None
+
+
+def _weather_to_features(weather):
+    """Map weather payload to model features; fallback to zeros when unavailable."""
+    if not weather:
+        return 0.0, 0.0, 0, True
+    temp = float(weather.get("temperature") or 0.0)
+    pressure = float(weather.get("pressure") or 0.0)
+    humidity_bin = 1 if float(weather.get("humidity") or 0.0) > 90 else 0
+    return temp, pressure, humidity_bin, False
 
 
 @app.route("/")
@@ -184,29 +280,16 @@ def predict():
         rows = payload if isinstance(payload, list) else [payload]
         df = pd.DataFrame(rows)
 
-        missing = [c for c in MODEL_FEATURES if c not in df.columns]
-        if missing:
-            return jsonify({"error": f"Missing features: {missing}"}), 400
-
-        X = df[MODEL_FEATURES]
+        X = _build_prediction_matrix(df)
         raw_pred = MODEL.predict(X)
 
-        #  post-processing:
-        # 1) avoid false positive dispatch: prediction < 3 => 0
-        pred = np.where(raw_pred < 3, 0, raw_pred)
-
-        # 2) keep prediction in [0, capacity] if capacity is provided
-        if "capacity" in df.columns:
-            pred = np.clip(pred, 0, df["capacity"].to_numpy())
-        else:
-            pred = np.clip(pred, 0, None)
-
-        pred = np.rint(pred).astype(int)
+        capacity = df["capacity"].to_numpy() if "capacity" in df.columns else None
+        pred = _predict_post_process(raw_pred, capacity)
 
         return jsonify(
             {
                 "target": MODEL_TARGET,
-                "features": MODEL_FEATURES,
+                "features": _effective_model_features(),
                 "raw_pred": raw_pred.tolist(),
                 "pred_available_bikes": pred.tolist(),
             }
@@ -221,8 +304,9 @@ def predict_by_input():
         if MODEL is None:
             return jsonify({"error": "Model not loaded. Train/save model first."}), 500
 
-        station_id = int(request.args["station_id"])
-        target_dt = datetime.strptime(request.args["datetime"], "%Y-%m-%d %H:%M:%S")
+        station_id, target_dt, err = _parse_predict_query_args(request.args)
+        if err:
+            return err
 
         db_feat = get_prediction_db_features(station_id, target_dt)
         if not db_feat:
@@ -231,7 +315,9 @@ def predict_by_input():
         forecast_rows = get_forecast(full_series=True)
         weather = _pick_forecast_for_target(target_dt, forecast_rows)
         capacity = float(db_feat.get("capacity") or 0)
-        humidity_bin = 1 if float(weather.get("humidity") or 0) > 90 else 0
+
+        # Weather fallback: if forecast is unavailable, continue with DB-only features.
+        temp, pressure, humidity_bin, weather_fallback = _weather_to_features(weather)
 
         row = {
             "number": int(db_feat.get("number", station_id)),
@@ -239,8 +325,8 @@ def predict_by_input():
             "day": int(target_dt.day),
             "hour": int(target_dt.hour),
             "minute": int(target_dt.minute),
-            "temp": float(weather.get("temperature")),
-            "pressure": float(weather.get("pressure")),
+            "temp": temp,
+            "pressure": pressure,
             "humidity": int(humidity_bin),
             "lng": float(db_feat.get("lng")),
             "lat": float(db_feat.get("lat")),
@@ -248,23 +334,20 @@ def predict_by_input():
             "bikes_same_slot_mean": float(db_feat.get("bikes_same_slot_mean") or 0),
         }
 
-        X = pd.DataFrame([row])[MODEL_FEATURES]
+        X = _build_prediction_matrix(pd.DataFrame([row]))
         raw_pred = MODEL.predict(X)
 
-        # Prediction limit to avoid false positive dispatch and availability qty over capacity .
-        pred = np.where(raw_pred < 3, 0, raw_pred)
-        pred = np.clip(pred, 0, capacity if capacity > 0 else None)
-        pred = np.rint(pred).astype(int)
+        pred = _predict_post_process(raw_pred, capacity if capacity > 0 else None)
 
         return jsonify(
             {
                 "station_id": station_id,
                 "datetime": target_dt.strftime("%Y-%m-%d %H:%M:%S"),
-                "features": MODEL_FEATURES,
+                "features": _effective_model_features(),
                 "feature_values": row,
                 "weather_source": {
-                    "mode": "forecast",
-                    "selected_forecast_time": weather.get("forecast_time"),
+                    "mode": "db_only_fallback" if weather_fallback else "forecast",
+                    "selected_forecast_time": weather.get("forecast_time") if weather else None,
                 },
                 "raw_pred": raw_pred.tolist(),
                 "pred_available_bikes": pred.tolist(),
