@@ -22,7 +22,6 @@
 
     <div class="weather-center">
         <!-- Current weather -->
-        <div class="weather-current">
             <div class="weather-item">
               ☀️ <span id="temperature">--</span>
             </div>
@@ -38,22 +37,35 @@
             <div class="weather-item">
                 💧 <span id="humidity">--</span>
             </div>
-        </div>
     </div>
     <div class="weather-right">
         <!-- Forecast weather -->
         <div class="forecast-card">
-            <div id="forecast1-time">--</div>
-            <div id="forecast1-temp">--</div>
-            <div id="forecast1-desc">--</div>
-            <div id="forecast1-humidity">--</div>
+            <div class="forecast-header">
+                <div id="forecast1-time">--</div>
+                <div class="forecast-label">Forecast</div>
+            </div>
+
+            <div class="forecast-main">
+                <div id="forecast1-temp">--</div>
+                <div id="forecast1-desc">--</div>
+            </div>
+
+            <div id="forecast1-humidity" class="forecast-bottom">--</div>
         </div>
 
         <div class="forecast-card">
-            <div id="forecast2-time">--</div>
-            <div id="forecast2-temp">--</div>
-            <div id="forecast2-desc">--</div>
-            <div id="forecast2-humidity">--</div>
+            <div class="forecast-header">
+                <div id="forecast2-time">--</div>
+                <div class="forecast-label">Forecast</div>
+            </div>
+
+            <div class="forecast-main">
+                <div id="forecast2-temp">--</div>
+                <div id="forecast2-desc">--</div>
+            </div>
+
+            <div id="forecast2-humidity" class="forecast-bottom">--</div>
         </div>
     </div>
 
@@ -272,8 +284,8 @@
     <h2 id="drawer-title">Station</h2>
     
     <div id="route-actions" style="display: none;">
-      <button onclick="swapRoute()">🔁 Swap</button>
-      <button onclick="resetRoute()">❌ Clear Route</button>
+      <button id="swap-btn">🔁 Swap</button>
+      <button id="reset-btn">❌ Clear Route</button>
     </div>
     
     <span id="close-drawer" class="close">&times;</span></div>
