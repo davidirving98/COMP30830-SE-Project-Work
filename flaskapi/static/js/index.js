@@ -292,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
         restriction: {
             latLngBounds: dublinBounds,
             strictBounds: true
-        }  
+        }
     });
         
     let clickStage = "start";
@@ -826,8 +826,8 @@ function clearRoute() {
     }
 
     // Clear status
-    selectedStart = null;
-    selectedEnd = null;
+    // selectedStart = null;
+    // selectedEnd = null;
 
 }
 
@@ -843,6 +843,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         calculateSmartRoute(selectedStart, selectedEnd);
     });
+    document.getElementById("swap-btn").addEventListener("click", swapRoute);
+    document.getElementById("reset-btn").addEventListener("click", resetRoute);
 
 });
 
