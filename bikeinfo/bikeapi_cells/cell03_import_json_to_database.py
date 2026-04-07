@@ -12,8 +12,14 @@ config = module_from_spec(spec)
 spec.loader.exec_module(config)
 
 engine = sqla.create_engine(
-    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{getattr(config, 'DB_NAME', 'COMP30830_SW')}"
+    sqla.engine.URL.create(
+        drivername="mysql+pymysql",
+        username=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=getattr(config, "DB_PORT", 3306),
+        database=getattr(config, "DB_NAME", "COMP30830_SW"),
+    )
 )
 
 with engine.begin() as conn:

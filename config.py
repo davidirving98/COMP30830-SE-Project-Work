@@ -17,7 +17,7 @@ DB_CONFIGS = {
         "DB_HOST": "127.0.0.1",
         "DB_PORT": 3306,
         "DB_USER": "root",
-        "DB_PASSWORD": "w20050718",
+        "DB_PASSWORD": "Wufangxun1@",
         "DB_NAME": "COMP30830_SW",
     },
     "rds": {

@@ -21,8 +21,14 @@ print("config checked", flush=True)
 DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 
 engine = sqla.create_engine(
-    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{DB_NAME}"
+    sqla.engine.URL.create(
+        drivername="mysql+pymysql",
+        username=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=getattr(config, "DB_PORT", 3306),
+        database=DB_NAME,
+    )
 )
 
 

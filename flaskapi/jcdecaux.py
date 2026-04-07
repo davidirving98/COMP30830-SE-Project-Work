@@ -2,9 +2,7 @@ import requests
 import os
 
 JCDECAUX_API_KEY = os.getenv("JCDECAUX_API_KEY")
-
 CONTRACT = "dublin"
-
 
 # Fetch station data from JCDecaux API and return a list of stations with relevant information
 def get_stations():
@@ -17,11 +15,8 @@ def get_stations():
 
     if response.status_code != 200:
         return None
-
     data = response.json()
-
     stations = []
-
     for station in data:
         stations.append(
             {
@@ -33,7 +28,6 @@ def get_stations():
                 "lng": station["position"]["lng"],
             }
         )
-
     return stations
 
 
@@ -44,13 +38,10 @@ def get_station(station_id):
         "https://api.jcdecaux.com/vls/v1/stations"
         f"?contract={CONTRACT}&apiKey={JCDECAUX_API_KEY}"
     )
-
     response = requests.get(url)
-
     if response.status_code != 200:
         return None
     data = response.json()
-
     for station in data:
         if station["number"] == station_id:
             return {
@@ -66,8 +57,6 @@ def get_station(station_id):
 
 
 # When front page is loaded, we can fetch the station data and store it in the database, so that we can use it for later queries without hitting the API every time.
-
-
 def fetch_stations_raw():
     url = (
         "https://api.jcdecaux.com/vls/v1/stations"
