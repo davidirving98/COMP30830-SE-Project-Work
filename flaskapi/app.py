@@ -359,4 +359,5 @@ def predict_by_input():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    __import__("subprocess").Popen([sys.executable, str(PROJECT_ROOT / "bikeinfo" / "bikeapi_cells" / "cell04_import_api_to_database.py")], cwd=str(PROJECT_ROOT))
     app.run(host="0.0.0.0", port=port, debug=False)

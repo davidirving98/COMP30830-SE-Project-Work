@@ -32,25 +32,33 @@ pytest -q tests/
 
 ```bash
 pytest -s \
-  tests/test_flask_app_p0.py \
   tests/test_flask_app.py \
-  tests/test_machine_learning_p2.py
+  tests/test_machine_learning.py \
+  tests/test_frontend_index_mock.py
 ```
 
 如需静默快速结果：
 
 ```bash
 pytest -q \
-  tests/test_flask_app_p0.py \
   tests/test_flask_app.py \
-  tests/test_machine_learning_p2.py
+  tests/test_machine_learning.py \
+  tests/test_frontend_index_mock.py
 ```
 
-顺序原则：先路由最小分支，再补一个基础回归文件，最后跑 ML service 最小覆盖。
+顺序原则：先后端路由与 service，再补前端 mock 单测。
+
+前端 mock 单测（新增，独立运行）：
+
+```bash
+pytest -p no:debugging -s tests/test_frontend_index_mock.py
+```
 
 ## 3. 测试文件说明
 
-### 3.1 `tests/test_openweather_jcdecaux_p0.py`
+### 3.1 `tests/test_openweather_jcdecaux_p0.py`（归档说明）
+
+说明：这组测试文件已不在当前 `tests/` 目录的最小主测试集中，下面内容用于解释曾经的覆盖设计，便于你读旧提交或历史文档。
 
 覆盖模块：`flaskapi/openweather.py`、`flaskapi/jcdecaux.py`
 
@@ -92,7 +100,9 @@ pytest -q \
 
 通过判定：断言返回值结构、字段值、异常类型是否符合预期。
 
-### 3.2 `tests/test_bikeinfo_sql_p0.py`
+### 3.2 `tests/test_bikeinfo_sql_p0.py`（归档说明）
+
+说明：同上，这部分是历史上的数据库层单测覆盖说明。
 
 覆盖模块：`flaskapi/bikeinfo_SQL.py`
 
@@ -124,15 +134,17 @@ pytest -q \
 
 通过判定：断言调用参数、输出计数、时间类型、分支结果。
 
-### 3.3 `tests/test_flask_app_p0.py`
+### 3.3 `tests/test_flask_app.py`
 
 覆盖模块：`flaskapi/app.py`（路由层）
 
 覆盖功能与条件：
 
 1. `/weather`
-- 条件：`get_weather` 返回 `None`。
+- 条件A：`get_weather` 返回 `None`。
 - 期望：500 + `Weather API unavailable`。
+- 条件B：`get_weather` 返回天气字典。
+- 期望：200 + 原样 JSON。
 
 2. `/forecast`
 - 条件A：`get_forecast` 返回数据。
@@ -144,17 +156,29 @@ pytest -q \
 - 条件B：`fetch_stations_raw` 有数据，`save_snapshot` 正常。
 - 期望：200 + 写入计数字典。
 
-4. `/station/<id>/history`
-- 条件：底层函数抛异常。
+4. `/stations`
+- 条件A：`get_latest_stations_view` 返回列表。
+- 期望：200 + 原样 JSON。
+- 条件B：`get_latest_stations_view` 抛异常。
 - 期望：500 + 错误 JSON。
 
-5. `/predict/by-input`
+5. `/predict`
+- 条件：`predict_from_payload` 被 mock。
+- 期望：路由原样返回服务层结果与状态码。
+
+6. `/predict/by-input`
 - 条件：`parse_predict_query_args` 返回参数错误。
 - 期望：路由返回对应 400 错误 JSON。
 
+7. `/station/<id>/history`
+- 条件：底层函数抛异常。
+- 期望：500 + 错误 JSON。
+
 通过判定：HTTP 状态码 + JSON 结构与最小分支行为。
 
-### 3.4 `tests/test_config_and_bikeapi_p1.py`
+### 3.4 `tests/test_config_and_bikeapi_p1.py`（归档说明）
+
+说明：同上，这部分是历史上的配置和导入脚本单测覆盖说明。
 
 覆盖模块：`config.py`、`bikeinfo/bikeapi_cells/cell02_init_database.py`、`bikeinfo/bikeapi_cells/cell03_import_json_to_database.py`
 
@@ -180,27 +204,9 @@ pytest -q \
 
 通过判定：mock 的 SQL 调用痕迹 + 结果计数。
 
-### 3.5 `tests/test_weather_jobs_p1.py`
 
-覆盖模块：`weatherinfo/scheduler_current_job.py`、`weatherinfo/scheduler_forecast_job.py`
 
-覆盖功能与条件：
-
-1. `weather_current_to_db`
-- 条件A：`cod != 200`。
-- 期望：抛 `ValueError`。
-- 条件B：`cod == 200` 且字段存在。
-- 期望：SQL 执行1次，提取字段正确（main/temp/wind/dt/snapshot_time）。
-
-2. `weather_forecast_to_db`
-- 条件A：传入 10 条 forecast。
-- 期望：只入库前8条。
-- 条件B：缺失 weather/main/wind 字段。
-- 期望：字段容错为 `None` 并可插入。
-
-通过判定：执行次数、字段值、时间类型。
-
-### 3.6 `tests/test_machine_learning_p2.py`
+### 3.6 `tests/test_machine_learning.py`
 
 覆盖模块：`flaskapi/ml_service.py`
 
@@ -220,36 +226,39 @@ pytest -q \
 
 通过判定：返回结构、状态码与最小预测流程可用性。
 
-补充说明（与当前 Flask 主应用关系）：
+### 3.7 `tests/test_frontend_index_mock.py`
 
-1. 当前生产预测链路已从 `flaskapi/app.py` 拆分到 `flaskapi/ml_service.py`。
-2. 当前最小测试集已将核心覆盖迁移到 `tests/test_machine_learning_p2.py`（直接覆盖 `ml_service.py`）。
-
-### 3.7 `tests/test_bikeinfo_cells.py`
-
-覆盖模块：`bikeinfo/bikeapi_cells/cell01_fetch_status_to_json.py`、`bikeinfo/bikeapi_cells/cell04_import_api_to_database.py`
+覆盖模块：`flaskapi/static/js/index.js`
 
 覆盖功能与条件：
 
-1. `fetch_and_save_once`
-- 条件：mock API 响应。
-- 期望：生成 `station_status_*.json` 并写入 payload。
+1. `toLocalDatetimeValue`
+- 条件：传入固定本地时间对象。
+- 期望：返回 `YYYY-MM-DDTHH:mm` 格式字符串。
 
-2. `import_once`
-- 条件：mock API 数据（含一条 `number=None`）。
-- 期望：过滤脏数据，station 与 availability 各执行一次插入，字段转换正确。
+2. `getStationColor`
+- 条件：分别传入 `0/0`、`0/x`、`x/0`、`x/x`。
+- 期望：返回 `grey/red/green/blue`。
 
-### 3.8 `tests/test_flask_app.py`
+3. `predictByInput`
+- 条件A：站点号或时间缺失。
+- 期望：不发请求，显示提示文案。
+- 条件B：站点号和时间完整，mock `/predict/by-input` 成功返回。
+- 期望：正确拼接 query string，并更新预测结果。
 
-覆盖模块：`flaskapi/app.py`（基础版本）
+4. `loadCurrentWeather`
+- 条件：mock `/weather` 返回天气数据。
+- 期望：温度、天气、风速、湿度写入页面。
 
-覆盖功能与条件：
+5. `loadForecast`
+- 条件：mock `/forecast` 返回两条预报。
+- 期望：两张 forecast 卡片都被正确填充。
 
-1. `/weather` 成功与 unavailable。
-2. `/stations` 成功与异常。
-3. `/predict` 路由转发：mock `predict_from_payload`，验证状态码与 JSON 返回。
+6. `getNearestStartStation` / `getNearestEndStation`
+- 条件：mock 多个站点，其中部分站点不可用。
+- 期望：只从可用站点里挑最近的起点/终点站。
 
-说明：这是早期基础路由测试，`test_flask_app_p0.py` 是更完整补充。
+通过判定：mock DOM、mock fetch、mock 站点列表后，断言文本内容、请求 URL 与最近站点选择结果。
 
 ## 4. 架构变更对测试文档的影响（ML 拆分）
 
@@ -258,6 +267,12 @@ pytest -q \
 1. Flask 路由测试通过：说明 HTTP 入口、参数流转与响应结构正常。
 2. ML service 测试通过：说明模型加载、特征构造、预测后处理逻辑正常。
 3. 若仅有路由测试通过，不能等价认为模型逻辑已完整覆盖。
+
+当前这份 `tests/` 目录里，主测试文件已经收敛为：
+
+1. `tests/test_flask_app.py`
+2. `tests/test_machine_learning.py`
+3. `tests/test_frontend_index_mock.py`
 
 ## 5. 常见问题
 
@@ -277,9 +292,9 @@ pytest -q \
 按关键词搜 PASS：
 
 ```bash
-pytest -s tests/test_flask_app_p0.py | rg "PASS \[P0\]\[Flask Routes\]"
 pytest -s tests/test_flask_app.py
-pytest -s tests/test_machine_learning_p2.py
+pytest -s tests/test_machine_learning.py
+pytest -p no:debugging -s tests/test_frontend_index_mock.py
 ```
 
 这样可以直接按最小集查看当前主链路是否可用。

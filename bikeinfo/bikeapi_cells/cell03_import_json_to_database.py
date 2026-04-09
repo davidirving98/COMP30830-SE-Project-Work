@@ -4,6 +4,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
 import sqlalchemy as sqla
+from sqlalchemy.engine import URL
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = PROJECT_ROOT / "config.py"
@@ -12,8 +13,14 @@ config = module_from_spec(spec)
 spec.loader.exec_module(config)
 
 engine = sqla.create_engine(
-    f"mysql+pymysql://{config.DB_USER}:{config.DB_PASSWORD}"
-    f"@{config.DB_HOST}:{getattr(config, 'DB_PORT', 3306)}/{getattr(config, 'DB_NAME', 'COMP30830_SW')}"
+    URL.create(
+        drivername="mysql+pymysql",
+        username=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=getattr(config, "DB_PORT", 3306),
+        database=getattr(config, "DB_NAME", "COMP30830_SW"),
+    )
 )
 
 with engine.begin() as conn:

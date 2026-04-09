@@ -260,7 +260,7 @@ async function loadForecast() {
         document.getElementById("forecast2-time").textContent = data[1].forecast_time;
         document.getElementById("forecast2-temp").textContent = `${temp2}°C`;
         document.getElementById("forecast2-desc").textContent = data[1].weather;
-        document.getElementById("forecast2-humidity").textContent =  `💧 ${data[0].humidity}%`;
+        document.getElementById("forecast2-humidity").textContent =  `💧 ${data[1].humidity}%`;
 
     } catch (err) {
         console.error("Forecast load failed:", err);

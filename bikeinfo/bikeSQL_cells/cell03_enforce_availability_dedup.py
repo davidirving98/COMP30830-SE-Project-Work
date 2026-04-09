@@ -6,11 +6,9 @@ import sqlalchemy as sqla
 sys.path.append(os.path.dirname(__file__))
 from cell01_db_connection_and_query_helper import engine, q
 
-try:
-    from IPython.display import display
-except ImportError:
-    def display(df):
-        print(df.to_string(index=False))
+
+def display(df):
+    print(df.to_string(index=False))
 
 display(
     q(
