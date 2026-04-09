@@ -1,6 +1,36 @@
 // Global array for storing the station data from the API
 let stations = [];
 
+// Accessibility: Text-to-Speech
+let speechEnabled = false;
+
+// Text-to-Speech function
+function speak(text) {
+    if (!speechEnabled) return;
+    if (!("speechSynthesis" in window)) return;
+
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.rate = 1;
+    speech.pitch = 1;
+    speech.lang = "en-IE";
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+}
+
+// Text-to-Speech toast message (enabled / disabled)
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.remove("hidden");
+
+    setTimeout(() => {
+        toast.classList.add("hidden");
+    }, 2000);
+}
+
 // Initialise route mapping variables
 let selectedStart = null;
 let selectedEnd = null;
@@ -22,6 +52,7 @@ function toLocalDatetimeValue(d) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Initialises prediction input controls and limits date range
 function initPredictControls() {
     const dtInput = document.getElementById("predict-datetime");
     const btn = document.getElementById("predict-btn");
@@ -101,10 +132,12 @@ function addMarkers(stations) {
 
         // Show the info window upon click
         marker.addListener("click", () => {
-            // Call routing function
+            // Call routing function, display station information
             currentStation = station;
             
             openDrawer(station);
+            
+            speak(`${station.name}. ${station.available_bikes} bikes available and ${station.available_stands} stands available.`);
             
             // Info window content (html)
             const content = `
@@ -273,7 +306,75 @@ document.addEventListener("DOMContentLoaded", () => {
     initPredictControls();
 });
 
+// Accessibility features
+document.addEventListener("DOMContentLoaded", () => {
+
+    const menu = document.getElementById("accessibility-menu");
+    const btn = document.getElementById("accessibility-btn");
+
+    const contrastBtn = document.getElementById("toggle-contrast");
+    const voiceBtn = document.getElementById("toggle-voice");
+
+    if (!menu || !btn) return;
+
+    // Toggle menu for assist
+    btn.addEventListener("click", () => {
+        menu.classList.toggle("hidden");
+    });
+
+    // Close if clicking outside
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#accessibility-btn") &&
+            !e.target.closest("#accessibility-menu")) {
+            menu.classList.add("hidden");
+        }
+    });
+
+    // High contrast toggle
+    if (contrastBtn) {
+        contrastBtn.addEventListener("click", () => {
+            const enabled = document.body.classList.toggle("high-contrast");
+
+            if (map) {
+                map.setOptions({
+                    styles: enabled ? darkMapStyle : []
+                });
+            }
+});
+    }
+
+    // Voice toggle
+    if (voiceBtn) {
+        voiceBtn.addEventListener("click", () => {
+            speechEnabled = !speechEnabled;
+
+            const message = `Voice ${speechEnabled ? "enabled" : "disabled"}`;
+
+            voiceBtn.textContent = speechEnabled ? "🔊 Voice ON" : "🔇 Voice OFF";
+            
+            showToast(message); // always show visual feedback
+
+            if (speechEnabled) {
+                speak(message); // only speak when turning ON
+            }
+        });
+    }
+
+});
+
 // Initialize and add the map
+
+let darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a3646" }] },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#0e1626" }]
+  }
+];
+
     function initMap() {
         const dublin = { lat: 53.35014, lng: -6.266155 };
         
@@ -292,7 +393,9 @@ document.addEventListener("DOMContentLoaded", () => {
         restriction: {
             latLngBounds: dublinBounds,
             strictBounds: true
-        }
+        },
+            styles: document.body.classList.contains("high-contrast") ? darkMapStyle : []   
+            
     });
         
     let clickStage = "start";
@@ -472,26 +575,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const startBtn = document.getElementById("start-btn");
     const howItWorksBtn = document.getElementById("how-it-works-btn");
 
-    // Show modal when page first loads only
+    // Show modal only first time
     if (!localStorage.getItem("wheelyWelcomeSeen")) {
-        welcomeModal.style.display = "flex";
-        localStorage.setItem("wheelyWelcomeSeen", true);
+        welcomeModal.classList.add("show");
+        localStorage.setItem("wheelyWelcomeSeen", "true");
     }
 
-    // Close modal
     function closeModal() {
-        welcomeModal.style.display = "none";
+        welcomeModal.classList.remove("show");
     }
 
     // Open modal
     function openModal() {
-        welcomeModal.style.display = "flex";
+        welcomeModal.classList.add("show");
     }
 
     closeWelcome.addEventListener("click", closeModal);
     startBtn.addEventListener("click", closeModal);
-    
-    // Reopen modal when clicked
+
     if (howItWorksBtn) {
         howItWorksBtn.addEventListener("click", openModal);
     }
@@ -753,6 +854,8 @@ function drawSegments(segments) {
                 if (completed === segments.length) {
                     const km = (totalDistance / 1000).toFixed(2);
                     const mins = Math.round(totalDuration / 60);
+                    
+                    speak(`Route calculated. Distance ${km} kilometers. Duration ${mins} minutes.`);
 
                     const orderedHTML = segmentResults.join("");
 

@@ -7,18 +7,20 @@
   <title>WheelyWise</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}" />
   <script src="https://www.gstatic.com/charts/loader.js"></script>
-</head>
-
+</head>  
+  
 <body>
 
   <header class="top-bar">
 
 
-    <!-- Weather displays -->
+    <!-- Header: Logo and Weather displays -->
 
     <div class="weather-left">
-      <span class="location">Dublin City Centre</span>
+      <div class="logo-header">
+        🚲 <span>WheelyWise</span>
     </div>
+  </div>
 
     <div class="weather-center">
         <!-- Current weather -->
@@ -72,10 +74,12 @@
   </header>
 
 
-
+<!-- Map -->
   <div id="map"></div>
 
   <footer>WheelyWise</footer>
+  
+<!-- Scripts -->
 
 <!-- Redirecting user to API endpoint for a station -->
   <script>
@@ -96,14 +100,14 @@
 
 
 
-  <!-- Bottom Bar -->
+  <!-- Bottom Bar: Buttons and Search -->
   <div class="bottom-bar">
 
-    <!-- Left side -->
+    <!-- Left side: Location and Stats -->
     <div class="bottom-left">
 
-      <div class="logo">
-        🚲 <span>WheelyWise</span>
+      <div class="location">
+        Dublin City Centre
       </div>
 
       <div class="stats">
@@ -116,6 +120,17 @@
         <div class="stat">
           <img src="{{ url_for('static', filename='icons/bike.svg') }}" width="16">
           <span id="bikes-available">0 Bikes Available</span>
+        </div>
+        
+        <!-- Accessibility button -->
+        <div class="accessibility-wrapper">
+          <button id="accessibility-btn" class="icon-btn">⚙️ Assist</button>
+        
+          <!-- Dropdown menu for accessibility features -->
+          <div id="accessibility-menu" class="accessibility-menu hidden">
+            <button id="toggle-contrast">🌓 High Contrast</button>
+            <button id="toggle-voice">🔊 Voice</button>
+          </div>
         </div>
         
         <button onclick="openDrawer()">🗺️ Plan Route</button>
@@ -138,7 +153,7 @@
 
     </div>
 
-    <!-- Right side -->
+    <!-- Right side: Account -->
     <div class="bottom-right">
       <button id="account-btn">
         <img src="{{ url_for('static', filename='icons/user.svg') }}" width="16">
@@ -147,6 +162,8 @@
     </div>
 
   </div>
+  
+<!-- Welcome Modal -->
 
   <div id="welcome-modal" class="modal">
 
@@ -185,6 +202,14 @@
             <p>Choose your start and end points, and start your journey!</p>
           </div>
         </div>
+        
+        <div class="welcome-step">
+          <div class="icon yellow">⚙️</div>
+          <div>
+            <strong>Assist Features</strong>
+            <p>Use the Assist menu to enable high contrast mode or voice guidance for easier navigation.</p>
+          </div>
+        </div>
 
         <div class="marker-box">
 
@@ -204,6 +229,7 @@
     </div>
   </div>
 
+<!-- Account Modal -->
 
   <div id="account-modal" class="modal">
 
@@ -272,12 +298,8 @@
 
   </div>
 
-  <script>
-
-
-
-</script>
-
+<!-- Drawer (Route & Prediction) -->
+  
 <div id="drawer" class="drawer">
   
   <div class="drawer-header">
@@ -290,14 +312,15 @@
     
     <span id="close-drawer" class="close">&times;</span></div>
   
-  <div class="drawer-search">
+  <div class="drawer-section">
     <input id="start-input" placeholder="Enter your starting location">
     <input id="end-input" placeholder="Enter your destination">
     <button id="route-btn">🚲 Get Route</button>
   </div>
 
-  <!-- Prediction panel: user only inputs station number + datetime -->
-  <div class="drawer-search predict-panel">
+
+  <!-- Prediction panel: user inputs station number + datetime -->
+  <div class="drawer-section prediction-section">
     <input id="predict-station-id" type="number" placeholder="Station number (e.g. 32)">
     <input id="predict-datetime" type="datetime-local">
     <button id="predict-btn"> ⭐  Predict Bikes ⭐ </button>
@@ -318,6 +341,10 @@
   </div>
       <div id="route-container"></div>
   </div>
+</div>
+
+<!-- Toast Notification -->  
+<div id="toast" class="toast hidden"></div>  
   
 </body>
 
