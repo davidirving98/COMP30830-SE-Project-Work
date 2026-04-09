@@ -34,7 +34,7 @@ pytest -q tests/
 pytest -s \
   tests/test_flask_app.py \
   tests/test_machine_learning.py \
-  tests/test_frontend_index_mock.py
+  tests/test_frontend_index.py
 ```
 
 如需静默快速结果：

@@ -221,5 +221,5 @@ def predict_by_station_and_datetime(station_id, target_dt_local_naive):
         "station_id": station_id,
         "raw_pred": raw_pred.tolist(),
         "pred_available_bikes": pred.tolist(),
-        "debug": debug_payload,
+        # "debug": debug_payload,
     }, 200
