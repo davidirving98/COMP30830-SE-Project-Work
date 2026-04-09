@@ -317,17 +317,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!menu || !btn) return;
 
-    // Toggle menu for assist
-    btn.addEventListener("click", () => {
-        menu.classList.toggle("hidden");
+    // Toggle menu
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menu.classList.toggle("show");
     });
 
-    // Close if clicking outside
-    document.addEventListener("click", (e) => {
-        if (!e.target.closest("#accessibility-btn") &&
-            !e.target.closest("#accessibility-menu")) {
-            menu.classList.add("hidden");
-        }
+    // Prevent clicks inside menu from closing it
+    menu.addEventListener("click", (e) => {
+        e.stopPropagation();
     });
 
     // High contrast toggle
@@ -340,7 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     styles: enabled ? darkMapStyle : []
                 });
             }
-});
+        });
     }
 
     // Voice toggle
@@ -351,11 +349,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const message = `Voice ${speechEnabled ? "enabled" : "disabled"}`;
 
             voiceBtn.textContent = speechEnabled ? "🔊 Voice ON" : "🔇 Voice OFF";
-            
-            showToast(message); // always show visual feedback
+
+            showToast(message);
 
             if (speechEnabled) {
-                speak(message); // only speak when turning ON
+                speak(message);
             }
         });
     }
