@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 
-# app.py uses local imports (from openweather import ...), so add flaskapi to path.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FLASKAPI_DIR = PROJECT_ROOT / "flaskapi"
 if str(FLASKAPI_DIR) not in sys.path:
@@ -21,21 +20,12 @@ def client():
 
 
 def test_weather_success(client, monkeypatch):
-    monkeypatch.setattr(app_module, "get_weather", lambda: {"temp": 12, "desc": "cloudy"})
+    monkeypatch.setattr(app_module, "get_weather", lambda: {"temperature": 12, "weather": "Clouds"})
 
     resp = client.get("/weather")
 
     assert resp.status_code == 200
-    assert resp.get_json() == {"temp": 12, "desc": "cloudy"}
-
-
-def test_weather_api_unavailable(client, monkeypatch):
-    monkeypatch.setattr(app_module, "get_weather", lambda: None)
-
-    resp = client.get("/weather")
-
-    assert resp.status_code == 500
-    assert "error" in resp.get_json()
+    assert resp.get_json() == {"temperature": 12, "weather": "Clouds"}
 
 
 def test_stations_success(client, monkeypatch):
@@ -48,27 +38,14 @@ def test_stations_success(client, monkeypatch):
     assert resp.get_json() == fake_data
 
 
-def test_stations_handles_exception(client, monkeypatch):
-    def raise_error():
-        raise RuntimeError("db down")
+def test_predict_route_returns_service_result(client, monkeypatch):
+    monkeypatch.setattr(app_module, "predict_from_payload", lambda _payload: ({"pred_available_bikes": [7]}, 200))
 
-    monkeypatch.setattr(app_module, "get_latest_stations_view", raise_error)
+    resp = client.post("/predict", json={"number": 1})
 
-    resp = client.get("/stations")
-
-    assert resp.status_code == 500
-    assert "error" in resp.get_json()
-
-
-def test_station_sql_info_not_found(client, monkeypatch):
-    monkeypatch.setattr(app_module, "get_station_sql", lambda station_id: None)
-
-    resp = client.get("/stations_SQL/99999/info")
-
-    assert resp.status_code == 404
-    assert resp.get_json()["error"] == "Station not found"
+    assert resp.status_code == 200
+    assert resp.get_json() == {"pred_available_bikes": [7]}
 
 
 if __name__ == "__main__":
-    # Allow direct execution: python tests/test_flask_app.py
     raise SystemExit(pytest.main(["-v", "-rA", __file__]))

@@ -1,150 +1,100 @@
-import ast
-import runpy
+import sys
 from datetime import datetime
 from pathlib import Path
-from types import SimpleNamespace
 
-import pandas as pd
+import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FLASKAPI_DIR = PROJECT_ROOT / "flaskapi"
+if str(FLASKAPI_DIR) not in sys.path:
+    sys.path.insert(0, str(FLASKAPI_DIR))
+
+import ml_service as ml
 
 
-def _load_function_from_script(script_path: Path, func_name: str, injected_globals: dict):
-    source = script_path.read_text(encoding="utf-8")
-    module_ast = ast.parse(source, filename=str(script_path))
-    for node in module_ast.body:
-        if isinstance(node, ast.FunctionDef) and node.name == func_name:
-            target = node
-            break
-    else:
-        raise AssertionError(f"Function {func_name} not found in {script_path}")
+class FakeModel:
+    def __init__(self, feature_names):
+        self.feature_names_in_ = np.array(feature_names)
 
-    func_module = ast.Module(body=[target], type_ignores=[])
-    compiled = compile(func_module, filename=str(script_path), mode="exec")
-    ns = dict(injected_globals)
-    exec(compiled, ns)
-    return ns[func_name]
+    def predict(self, x):
+        return np.array([5.6] * len(x))
 
 
-def test_predict_bike_availability_builds_features_and_returns_prediction():
-    script = PROJECT_ROOT / "machine_learning" / "2. predict_based_on_weather.py"
+def test_parse_predict_query_args_missing_returns_400():
+    station_id, target_dt, err = ml.parse_predict_query_args({})
 
-    class FakeModel:
-        def predict(self, df):
-            assert list(df.columns) == [
-                "station_id",
-                "temperature",
-                "humidity",
-                "wind_speed",
-                "precipitation",
+    assert station_id is None
+    assert target_dt is None
+    assert err[1] == 400
+    assert "Missing required query params" in err[0]["error"]
+
+
+def test_predict_from_payload_supports_single_record(monkeypatch):
+    monkeypatch.setattr(ml, "MODEL", FakeModel(["capacity", "number_3"]))
+    monkeypatch.setattr(ml, "MODEL_FEATURES", [])
+    monkeypatch.setattr(ml, "MODEL_TARGET", "available_bikes")
+
+    data, status = ml.predict_from_payload({"number": 3, "capacity": 20})
+
+    assert status == 200
+    assert data["target"] == "available_bikes"
+    assert data["raw_pred"] == [5.6]
+    assert data["pred_available_bikes"] == [6]
+
+
+def test_predict_by_station_and_datetime_returns_basic_prediction(monkeypatch):
+    monkeypatch.setattr(
+        ml,
+        "MODEL",
+        FakeModel(
+            [
+                "capacity",
+                "day",
                 "hour",
-                "day_of_week",
+                "minute",
+                "temp",
+                "pressure",
+                "humidity",
+                "lng",
+                "lat",
+                "bikes_1d_mean",
+                "bikes_same_slot_mean",
             ]
-            assert df.iloc[0]["hour"] == 9
-            return [17]
-
-    predict_bike_availability = _load_function_from_script(
-        script,
-        "predict_bike_availability",
-        {
-            "datetime": datetime,
-            "pd": pd,
-            "model": FakeModel(),
-            "get_weather_forecast": lambda city, date: {
-                "temperature": 20.0,
-                "humidity": 60.0,
-                "wind_speed": 10.0,
-                "precipitation": 0.0,
-            },
-        },
+        ),
     )
 
-    assert predict_bike_availability(1, "Dublin", "2024-02-25", "09:00") == 17
+    monkeypatch.setattr(
+        ml,
+        "get_prediction_db_features",
+        lambda station_id, _target_time: {
+            "number": station_id,
+            "capacity": 20,
+            "lng": -6.26,
+            "lat": 53.34,
+            "bikes_1d_mean": 3.0,
+            "bikes_same_slot_mean": 7.0,
+        },
+    )
+    monkeypatch.setattr(
+        ml,
+        "get_forecast",
+        lambda full_series=True: [
+            {
+                "dt": 1775588400,
+                "forecast_time": "2026-04-07 20:00:00",
+                "temperature": 15.0,
+                "pressure": 1015,
+                "humidity": 75,
+            }
+        ],
+    )
 
+    data, status = ml.predict_by_station_and_datetime(3, datetime(2026, 4, 7, 19, 30, 0))
 
-def test_prediction_flask_predict_missing_params_returns_400():
-    ns = runpy.run_path(str(PROJECT_ROOT / "machine_learning" / "3. prediction_flask.py"))
-    app = ns["app"]
-
-    with app.test_client() as client:
-        resp = client.get("/predict?date=2024-02-25")
-
-    assert resp.status_code == 400
-    assert "Missing date, time, or station_id" in resp.get_json()["error"]
-
-
-def test_prediction_flask_predict_invalid_time_returns_500():
-    ns = runpy.run_path(str(PROJECT_ROOT / "machine_learning" / "3. prediction_flask.py"))
-    app = ns["app"]
-    predict_func = ns["predict"]
-
-    class FakeModel:
-        def predict(self, _arr):
-            return [9]
-
-    predict_func.__globals__["model"] = FakeModel()
-    predict_func.__globals__["fetch_openweather_forecast"] = lambda _date: {
-        "temperature": 20,
-        "humidity": 60,
-        "wind_speed": 5,
-        "precipitation": 0,
-    }
-
-    with app.test_client() as client:
-        resp = client.get("/predict?date=2024-02-25&time=09:00&station_id=32")
-
-    assert resp.status_code == 500
-    assert "does not match format" in resp.get_json()["error"]
-
-
-def test_prediction_flask_predict_success():
-    ns = runpy.run_path(str(PROJECT_ROOT / "machine_learning" / "3. prediction_flask.py"))
-    app = ns["app"]
-    predict_func = ns["predict"]
-
-    class FakeModel:
-        def predict(self, arr):
-            assert arr.shape == (1, 7)
-            return [11]
-
-    predict_func.__globals__["model"] = FakeModel()
-    predict_func.__globals__["fetch_openweather_forecast"] = lambda _date: {
-        "temperature": 18,
-        "humidity": 70,
-        "wind_speed": 4,
-        "precipitation": 1,
-    }
-
-    with app.test_client() as client:
-        resp = client.get("/predict?date=2024-02-25&time=09:00:00&station_id=32")
-
-    assert resp.status_code == 200
-    assert resp.get_json() == {"predicted_available_bikes": 11}
-
-
-def test_prediction_flask_station_id_type_boundary_behaviour():
-    ns = runpy.run_path(str(PROJECT_ROOT / "machine_learning" / "3. prediction_flask.py"))
-    app = ns["app"]
-    predict_func = ns["predict"]
-
-    class FakeModel:
-        def predict(self, arr):
-            return [int(arr[0][0] == "32")]
-
-    predict_func.__globals__["model"] = FakeModel()
-    predict_func.__globals__["fetch_openweather_forecast"] = lambda _date: {
-        "temperature": 18,
-        "humidity": 70,
-        "wind_speed": 4,
-        "precipitation": 1,
-    }
-
-    with app.test_client() as client:
-        ok_resp = client.get("/predict?date=2024-02-25&time=09:00:00&station_id=32")
-        bad_resp = client.get("/predict?date=2024-02-25&time=09:00:00&station_id=abc")
-
-    assert ok_resp.status_code == 200
-    assert bad_resp.status_code == 200
-    assert ok_resp.get_json()["predicted_available_bikes"] == 1
-    assert bad_resp.get_json()["predicted_available_bikes"] == 0
+    assert status == 200
+    assert data["station_id"] == 3
+    assert isinstance(data["raw_pred"], list)
+    assert isinstance(data["pred_available_bikes"], list)
+    assert "debug" in data
+    assert "feature_values" in data["debug"]
