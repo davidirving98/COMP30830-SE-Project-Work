@@ -1,6 +1,6 @@
 # Unit Test Guide
 
-> Last updated: 2026-04-06
+> Last updated: 2026-04-09
 
 本文档用于解释当前 `tests/` 目录中每个测试文件的覆盖范围、测试条件和通过判定，帮助你在执行测试时快速判断“哪些功能通过了、为什么通过”。
 
@@ -28,25 +28,37 @@ pytest -s tests/
 pytest -q tests/
 ```
 
-## 2. 推荐执行顺序
+## 2. 最小单元测试集（推荐）
 
 ```bash
 pytest -s \
-  tests/test_openweather_jcdecaux_p0.py \
-  tests/test_bikeinfo_sql_p0.py \
-  tests/test_flask_app_p0.py \
-  tests/test_config_and_bikeapi_p1.py \
-  tests/test_weather_jobs_p1.py \
-  tests/test_machine_learning_p2.py \
-  tests/test_bikeinfo_cells.py \
-  tests/test_flask_app.py
+  tests/test_flask_app.py \
+  tests/test_machine_learning.py \
+  tests/test_frontend_index_mock.py
 ```
 
-顺序原则：先纯函数/封装，再 SQL 逻辑，再 Flask 路由，再脚本类测试。
+如需静默快速结果：
+
+```bash
+pytest -q \
+  tests/test_flask_app.py \
+  tests/test_machine_learning.py \
+  tests/test_frontend_index_mock.py
+```
+
+顺序原则：先后端路由与 service，再补前端 mock 单测。
+
+前端 mock 单测（新增，独立运行）：
+
+```bash
+pytest -p no:debugging -s tests/test_frontend_index_mock.py
+```
 
 ## 3. 测试文件说明
 
-### 3.1 `tests/test_openweather_jcdecaux_p0.py`
+### 3.1 `tests/test_openweather_jcdecaux_p0.py`（归档说明）
+
+说明：这组测试文件已不在当前 `tests/` 目录的最小主测试集中，下面内容用于解释曾经的覆盖设计，便于你读旧提交或历史文档。
 
 覆盖模块：`flaskapi/openweather.py`、`flaskapi/jcdecaux.py`
 
@@ -88,7 +100,9 @@ pytest -s \
 
 通过判定：断言返回值结构、字段值、异常类型是否符合预期。
 
-### 3.2 `tests/test_bikeinfo_sql_p0.py`
+### 3.2 `tests/test_bikeinfo_sql_p0.py`（归档说明）
+
+说明：同上，这部分是历史上的数据库层单测覆盖说明。
 
 覆盖模块：`flaskapi/bikeinfo_SQL.py`
 
@@ -120,40 +134,51 @@ pytest -s \
 
 通过判定：断言调用参数、输出计数、时间类型、分支结果。
 
-### 3.3 `tests/test_flask_app_p0.py`
+### 3.3 `tests/test_flask_app.py`
 
-覆盖模块：`flaskapi/app.py`
+覆盖模块：`flaskapi/app.py`（路由层）
 
 覆盖功能与条件：
 
-1. `/forecast`
+1. `/weather`
+- 条件A：`get_weather` 返回 `None`。
+- 期望：500 + `Weather API unavailable`。
+- 条件B：`get_weather` 返回天气字典。
+- 期望：200 + 原样 JSON。
+
+2. `/forecast`
 - 条件A：`get_forecast` 返回数据。
 - 期望：200 + 原样 JSON。
-- 条件B：`get_forecast` 返回 `None`。
-- 期望：500 + `Forecast API unavailable`。
 
-2. `/stations/refresh`
+3. `/stations/refresh`
 - 条件A：`fetch_stations_raw=None`。
 - 期望：500 + `Bike API unavailable`。
 - 条件B：`fetch_stations_raw` 有数据，`save_snapshot` 正常。
 - 期望：200 + 写入计数字典。
-- 条件C：`save_snapshot` 抛异常。
-- 期望：500 + 路由错误信息。
 
-3. `/station/<id>/info`
-- 条件A：站点和天气都存在。
-- 期望：200 + `{station, weather}`。
-- 条件B：任一缺失。
-- 期望：500 + `Data unavailable`。
+4. `/stations`
+- 条件A：`get_latest_stations_view` 返回列表。
+- 期望：200 + 原样 JSON。
+- 条件B：`get_latest_stations_view` 抛异常。
+- 期望：500 + 错误 JSON。
 
-4. SQL相关路由异常分支
-- `/stations_SQL`、`/availability_SQL`、`/station/<id>/history`
+5. `/predict`
+- 条件：`predict_from_payload` 被 mock。
+- 期望：路由原样返回服务层结果与状态码。
+
+6. `/predict/by-input`
+- 条件：`parse_predict_query_args` 返回参数错误。
+- 期望：路由返回对应 400 错误 JSON。
+
+7. `/station/<id>/history`
 - 条件：底层函数抛异常。
 - 期望：500 + 错误 JSON。
 
-通过判定：HTTP 状态码 + JSON 错误/数据结构。
+通过判定：HTTP 状态码 + JSON 结构与最小分支行为。
 
-### 3.4 `tests/test_config_and_bikeapi_p1.py`
+### 3.4 `tests/test_config_and_bikeapi_p1.py`（归档说明）
+
+说明：同上，这部分是历史上的配置和导入脚本单测覆盖说明。
 
 覆盖模块：`config.py`、`bikeinfo/bikeapi_cells/cell02_init_database.py`、`bikeinfo/bikeapi_cells/cell03_import_json_to_database.py`
 
@@ -179,77 +204,77 @@ pytest -s \
 
 通过判定：mock 的 SQL 调用痕迹 + 结果计数。
 
-### 3.5 `tests/test_weather_jobs_p1.py`
 
-覆盖模块：`weatherinfo/scheduler_current_job.py`、`weatherinfo/scheduler_forecast_job.py`
 
-覆盖功能与条件：
+### 3.6 `tests/test_machine_learning.py`
 
-1. `weather_current_to_db`
-- 条件A：`cod != 200`。
-- 期望：抛 `ValueError`。
-- 条件B：`cod == 200` 且字段存在。
-- 期望：SQL 执行1次，提取字段正确（main/temp/wind/dt/snapshot_time）。
-
-2. `weather_forecast_to_db`
-- 条件A：传入 10 条 forecast。
-- 期望：只入库前8条。
-- 条件B：缺失 weather/main/wind 字段。
-- 期望：字段容错为 `None` 并可插入。
-
-通过判定：执行次数、字段值、时间类型。
-
-### 3.6 `tests/test_machine_learning_p2.py`
-
-覆盖模块：`machine_learning/2. predict_based_on_weather.py`、`machine_learning/3. prediction_flask.py`
+覆盖模块：`flaskapi/ml_service.py`
 
 覆盖功能与条件：
 
-1. `predict_bike_availability`
-- 条件：mock 模型和天气函数。
-- 期望：特征列顺序完整，`hour/day_of_week` 解析正确，返回模型预测值。
+1. `parse_predict_query_args`
+- 条件：缺参数。
+- 期望：返回 `(None, None, ({error...}, 400))`。
 
-2. `/predict` 路由
-- 条件A：缺参数。
-- 期望：400 + 缺参错误。
-- 条件B：时间格式错误（`09:00` vs 代码要求 `%H:%M:%S`）。
-- 期望：500 + format error。
-- 条件C：参数完整。
-- 期望：200 + `predicted_available_bikes`。
+2. `predict_from_payload`
+- 条件：单条记录输入（dict）。
+- 期望：正常预测并返回 `target/raw_pred/pred_available_bikes`。
 
-3. `station_id` 边界行为
-- 条件：传 `32` 与 `abc`。
-- 期望：当前实现都可进入预测（字符串不做数值校验），测试用来固定当前行为。
+3. `predict_by_station_and_datetime`
+- 条件：mock DB 特征与 forecast。
+- 期望：返回 `station_id/raw_pred/pred_available_bikes/debug`。
 
-通过判定：状态码、错误文本、预测 JSON。
+通过判定：返回结构、状态码与最小预测流程可用性。
 
-### 3.7 `tests/test_bikeinfo_cells.py`
+### 3.7 `tests/test_frontend_index_mock.py`
 
-覆盖模块：`bikeinfo/bikeapi_cells/cell01_fetch_status_to_json.py`、`bikeinfo/bikeapi_cells/cell04_import_api_to_database.py`
+覆盖模块：`flaskapi/static/js/index.js`
 
 覆盖功能与条件：
 
-1. `fetch_and_save_once`
-- 条件：mock API 响应。
-- 期望：生成 `station_status_*.json` 并写入 payload。
+1. `toLocalDatetimeValue`
+- 条件：传入固定本地时间对象。
+- 期望：返回 `YYYY-MM-DDTHH:mm` 格式字符串。
 
-2. `import_once`
-- 条件：mock API 数据（含一条 `number=None`）。
-- 期望：过滤脏数据，station 与 availability 各执行一次插入，字段转换正确。
+2. `getStationColor`
+- 条件：分别传入 `0/0`、`0/x`、`x/0`、`x/x`。
+- 期望：返回 `grey/red/green/blue`。
 
-### 3.8 `tests/test_flask_app.py`
+3. `predictByInput`
+- 条件A：站点号或时间缺失。
+- 期望：不发请求，显示提示文案。
+- 条件B：站点号和时间完整，mock `/predict/by-input` 成功返回。
+- 期望：正确拼接 query string，并更新预测结果。
 
-覆盖模块：`flaskapi/app.py`（基础版本）
+4. `loadCurrentWeather`
+- 条件：mock `/weather` 返回天气数据。
+- 期望：温度、天气、风速、湿度写入页面。
 
-覆盖功能与条件：
+5. `loadForecast`
+- 条件：mock `/forecast` 返回两条预报。
+- 期望：两张 forecast 卡片都被正确填充。
 
-1. `/weather` 成功与 unavailable。
-2. `/stations` 成功与异常。
-3. `/stations_SQL/<id>/info` 站点不存在返回 404。
+6. `getNearestStartStation` / `getNearestEndStation`
+- 条件：mock 多个站点，其中部分站点不可用。
+- 期望：只从可用站点里挑最近的起点/终点站。
 
-说明：这是早期基础路由测试，`test_flask_app_p0.py` 是更完整补充。
+通过判定：mock DOM、mock fetch、mock 站点列表后，断言文本内容、请求 URL 与最近站点选择结果。
 
-## 4. 常见问题
+## 4. 架构变更对测试文档的影响（ML 拆分）
+
+`app.py` 目前定位为“路由层 + 服务调用”，ML 细节位于 `ml_service.py`。因此阅读测试结果时应区分：
+
+1. Flask 路由测试通过：说明 HTTP 入口、参数流转与响应结构正常。
+2. ML service 测试通过：说明模型加载、特征构造、预测后处理逻辑正常。
+3. 若仅有路由测试通过，不能等价认为模型逻辑已完整覆盖。
+
+当前这份 `tests/` 目录里，主测试文件已经收敛为：
+
+1. `tests/test_flask_app.py`
+2. `tests/test_machine_learning.py`
+3. `tests/test_frontend_index_mock.py`
+
+## 5. 常见问题
 
 1. 看不到 print 的 PASS？
 - 原因：未加 `-s`。
@@ -262,19 +287,19 @@ pytest -s \
 3. 为什么很多测试用 mock？
 - 目标是单元测试隔离外部依赖（MySQL/网络/API），让失败点更可定位。
 
-## 5. 快速定位“某功能是否通过”
+## 6. 快速定位“某功能是否通过”
 
 按关键词搜 PASS：
 
 ```bash
-pytest -s tests/test_flask_app_p0.py | rg "PASS \[P0\]\[Flask Routes\]"
-pytest -s tests/test_bikeinfo_sql_p0.py | rg "PASS \[P0\]\[Bikeinfo SQL\]"
-pytest -s tests/test_openweather_jcdecaux_p0.py | rg "PASS \[P0\]\[External API Wrappers\]"
+pytest -s tests/test_flask_app.py
+pytest -s tests/test_machine_learning.py
+pytest -p no:debugging -s tests/test_frontend_index_mock.py
 ```
 
-这样可以直接按模块查看已通过的功能点。
+这样可以直接按最小集查看当前主链路是否可用。
 
-## 6. 与 ML Notebook 对齐说明（新增）
+## 7. 与 ML Notebook 对齐说明（新增）
 
 近期 `machine_learning/ML.ipynb` 已更新为 70/30 时间顺序切分评估，并在模型训练后统一保存模型文件。以下产物命名已与项目现有文件保持一致：
 

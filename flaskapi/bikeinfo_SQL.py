@@ -2,6 +2,7 @@ import sqlalchemy as sqla
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+from sqlalchemy.engine import URL
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -12,7 +13,7 @@ import config
 
 # config  provides database connection info and api keys, and also defines paths for local data storage (if needed)
 def _build_connection_string():
-    return sqla.engine.URL.create(
+    return URL.create(
         drivername="mysql+pymysql",
         username=config.DB_USER,
         password=config.DB_PASSWORD,

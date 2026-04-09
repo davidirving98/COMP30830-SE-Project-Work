@@ -568,6 +568,19 @@ button:hover {
   flex: 1;
 }
 
+.predict-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 28px 20px 0;
+}
+
+.predict-panel input,
+.predict-panel button {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .drawer-buttons {
   margin-top: 15px;
   display: flex;

@@ -1,6 +1,7 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import sqlalchemy as sqla
+from sqlalchemy.engine import URL
 
 # Load project root config.py by absolute file path.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -19,7 +20,7 @@ DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 
 # Connect to MySQL server and create target DB if missing.
 engine = sqla.create_engine(
-    sqla.engine.URL.create(
+    URL.create(
         drivername="mysql+pymysql",
         username=config.DB_USER,
         password=config.DB_PASSWORD,

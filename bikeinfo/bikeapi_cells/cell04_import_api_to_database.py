@@ -5,6 +5,7 @@ import sqlalchemy as sqla
 from pathlib import Path
 import time
 from statistics import fmean
+from sqlalchemy.engine import URL
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = PROJECT_ROOT / "config.py"
@@ -20,7 +21,7 @@ _spec.loader.exec_module(config)
 # pull in data from API and insert into database.
 DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 engine = sqla.create_engine(
-    sqla.engine.URL.create(
+    URL.create(
         drivername="mysql+pymysql",
         username=config.DB_USER,
         password=config.DB_PASSWORD,

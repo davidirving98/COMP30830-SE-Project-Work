@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import sqlalchemy as sqla
+from sqlalchemy.engine import URL
 
 # Load project root config.py by absolute file path.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -21,7 +22,7 @@ print("config checked", flush=True)
 DB_NAME = getattr(config, "DB_NAME", "COMP30830_SW")
 
 engine = sqla.create_engine(
-    sqla.engine.URL.create(
+    URL.create(
         drivername="mysql+pymysql",
         username=config.DB_USER,
         password=config.DB_PASSWORD,
