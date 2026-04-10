@@ -172,9 +172,12 @@ def predict_by_station_and_datetime(station_id, target_dt_local_naive):
     weather = _pick_forecast(target_utc_aware, get_forecast(full_series=True))
     temp, pressure, humidity_bin = _weather_to_features(weather)
     capacity = float(db_feat.get("capacity") or 0)
+    station_number = int(db_feat.get("number", station_id))
+    bikes_same_slot_mean = float(db_feat.get("bikes_same_slot_mean") or 0)
+    bikes_1d_mean = float(db_feat.get("bikes_1d_mean") or bikes_same_slot_mean or 0)
 
     row = {
-        "number": int(db_feat.get("number", station_id)),
+        "number": station_number,
         "capacity": capacity,
         "day": int(target_utc_naive.day),
         "hour": int(target_utc_naive.hour),
@@ -184,8 +187,8 @@ def predict_by_station_and_datetime(station_id, target_dt_local_naive):
         "humidity": int(humidity_bin),
         "lng": float(db_feat.get("lng")),
         "lat": float(db_feat.get("lat")),
-        "bikes_1d_mean": float(db_feat.get("bikes_1d_mean") or 0),
-        "bikes_same_slot_mean": float(db_feat.get("bikes_same_slot_mean") or 0),
+        "bikes_1d_mean": bikes_1d_mean,
+        "bikes_same_slot_mean": bikes_same_slot_mean,
     }
 
     x = _build_matrix(pd.DataFrame([row]))
