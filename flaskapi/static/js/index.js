@@ -1,6 +1,36 @@
 // Global array for storing the station data from the API
 let stations = [];
 
+// Accessibility: Text-to-Speech
+let speechEnabled = false;
+
+// Text-to-Speech function
+function speak(text) {
+    if (!speechEnabled) return;
+    if (!("speechSynthesis" in window)) return;
+
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.rate = 1;
+    speech.pitch = 1;
+    speech.lang = "en-IE";
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+}
+
+// Text-to-Speech toast message (enabled / disabled)
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.remove("hidden");
+
+    setTimeout(() => {
+        toast.classList.add("hidden");
+    }, 2000);
+}
+
 // Initialise route mapping variables
 let selectedStart = null;
 let selectedEnd = null;
@@ -22,6 +52,7 @@ function toLocalDatetimeValue(d) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Initialises prediction input controls and limits date range
 function initPredictControls() {
     const dtInput = document.getElementById("predict-datetime");
     const btn = document.getElementById("predict-btn");
@@ -67,6 +98,7 @@ async function predictByInput() {
             ? data.pred_available_bikes[0]
             : data.pred_available_bikes;
         resultEl.innerText = `Predicted available bikes: ${pred}`;
+        speak(`${pred} bikes expected at ${currentStation?.name || "this station"}`);
     } catch (err) {
         resultEl.innerText = `Error: ${err.message}`;
     }
@@ -101,10 +133,12 @@ function addMarkers(stations) {
 
         // Show the info window upon click
         marker.addListener("click", () => {
-            // Call routing function
+            // Call routing function, display station information
             currentStation = station;
             
             openDrawer(station);
+            
+            speak(`${station.name}. ${station.available_bikes} bikes available and ${station.available_stands} stands available.`);
             
             // Info window content (html)
             const content = `
@@ -273,7 +307,73 @@ document.addEventListener("DOMContentLoaded", () => {
     initPredictControls();
 });
 
+// Accessibility features
+document.addEventListener("DOMContentLoaded", () => {
+
+    const menu = document.getElementById("accessibility-menu");
+    const btn = document.getElementById("accessibility-btn");
+
+    const contrastBtn = document.getElementById("toggle-contrast");
+    const voiceBtn = document.getElementById("toggle-voice");
+
+    if (!menu || !btn) return;
+
+    // Toggle menu
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menu.classList.toggle("show");
+    });
+
+    // Prevent clicks inside menu from closing it
+    menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+    });
+
+    // High contrast toggle
+    if (contrastBtn) {
+        contrastBtn.addEventListener("click", () => {
+            const enabled = document.body.classList.toggle("high-contrast");
+
+            if (map) {
+                map.setOptions({
+                    styles: enabled ? darkMapStyle : []
+                });
+            }
+        });
+    }
+
+    // Voice toggle
+    if (voiceBtn) {
+        voiceBtn.addEventListener("click", () => {
+            speechEnabled = !speechEnabled;
+
+            const message = `Voice ${speechEnabled ? "enabled" : "disabled"}`;
+
+            voiceBtn.textContent = speechEnabled ? "🔊 Voice ON" : "🔇 Voice OFF";
+
+            showToast(message);
+
+            if (speechEnabled) {
+                speak(message);
+            }
+        });
+    }
+
+});
+
 // Initialize and add the map
+
+let darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a3646" }] },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#0e1626" }]
+  }
+];
+
     function initMap() {
         const dublin = { lat: 53.35014, lng: -6.266155 };
         
@@ -292,7 +392,9 @@ document.addEventListener("DOMContentLoaded", () => {
         restriction: {
             latLngBounds: dublinBounds,
             strictBounds: true
-        }
+        },
+            styles: document.body.classList.contains("high-contrast") ? darkMapStyle : []   
+            
     });
         
     let clickStage = "start";
@@ -377,8 +479,9 @@ function confirmPoint(type, lat, lng) {
             });
         }
 
-        document.getElementById("route-status").innerText =
+        document.getElementById("route-summary").innerText =
             "Start selected — now choose destination";
+        speak("Start selected. Now choose your destination or type it into the destination bar");
 
         clickStage = "end";
         infoWindow.close();
@@ -412,7 +515,7 @@ function confirmPoint(type, lat, lng) {
             });
         }
 
-        document.getElementById("route-status").innerText =
+        document.getElementById("route-summary").innerText =
             "Route calculating...";
 
         clickStage = "start";
@@ -472,26 +575,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const startBtn = document.getElementById("start-btn");
     const howItWorksBtn = document.getElementById("how-it-works-btn");
 
-    // Show modal when page first loads only
+    // Show modal only first time
     if (!localStorage.getItem("wheelyWelcomeSeen")) {
-        welcomeModal.style.display = "flex";
-        localStorage.setItem("wheelyWelcomeSeen", true);
+        welcomeModal.classList.add("show");
+        localStorage.setItem("wheelyWelcomeSeen", "true");
     }
 
-    // Close modal
     function closeModal() {
-        welcomeModal.style.display = "none";
+        welcomeModal.classList.remove("show");
     }
 
     // Open modal
     function openModal() {
-        welcomeModal.style.display = "flex";
+        welcomeModal.classList.add("show");
     }
 
     closeWelcome.addEventListener("click", closeModal);
     startBtn.addEventListener("click", closeModal);
-    
-    // Reopen modal when clicked
+
     if (howItWorksBtn) {
         howItWorksBtn.addEventListener("click", openModal);
     }
@@ -583,6 +684,7 @@ function openDrawer(station = null) {
 
     } else {
     document.getElementById("drawer-title").innerText = "Route Planner";
+    speak("Plan your route. Select a starting point on the map or type it into the starting location bar");
     }
     
     drawer.classList.add("open");
@@ -610,6 +712,12 @@ function calculateSmartRoute(start, end) {
 
     const startStation = getNearestStartStation(start);
     const endStation = getNearestEndStation(end);
+    
+    // Enable prediction of nearest start station's bikes
+    const predictInput = document.getElementById("predict-station-id");
+        if (predictInput && startStation) {
+            predictInput.value = startStation.number;
+        }
 
     if (!startStation || !endStation) {
         alert("No nearby stations available");
@@ -753,10 +861,12 @@ function drawSegments(segments) {
                 if (completed === segments.length) {
                     const km = (totalDistance / 1000).toFixed(2);
                     const mins = Math.round(totalDuration / 60);
+                    
+                    speak(`Route calculated. Distance ${km} kilometers. Duration ${mins} minutes.`);
 
                     const orderedHTML = segmentResults.join("");
 
-                    document.getElementById("route-status").innerHTML = `
+                    document.getElementById("route-summary").innerHTML = `
                         <div class="route-summary">
                              🚲 ${km} km • ⏱️ ${mins} mins
                         </div>
@@ -773,7 +883,15 @@ function drawSegments(segments) {
                     // Fit FULL route bounds
                     const bounds = new google.maps.LatLngBounds();
                     routePoints.forEach(point => bounds.extend(point));
-                    map.fitBounds(bounds, 80);
+                    const drawer = document.getElementById("drawer"); // View full route with drawer open/closed
+                    const drawerWidth = drawer.classList.contains("open") ? drawer.offsetWidth : 0;
+
+                    map.fitBounds(bounds, {
+                        top: 80,
+                        bottom: 80,
+                        left: drawerWidth + 40,
+                        right: 80
+                    });
                 }
 
             } else {
@@ -812,7 +930,7 @@ function clearRoute() {
     routeMarkers.forEach(marker => marker.setMap(null));
     routeMarkers = [];
     
-    document.getElementById("route-status").innerText = "No route selected";
+    document.getElementById("route-summary").innerText = "No route selected";
 
     // Clear start/end markers
     if (startMarker) {
@@ -972,7 +1090,7 @@ function resetRoute() {
     // Clear the inputs in the drawer
     document.getElementById("start-input").value = "";
     document.getElementById("end-input").value = "";
-    document.getElementById("route-status").innerText = "No route selected";
+    document.getElementById("route-summary").innerText = "No route selected";
     
     // hide buttons
     const actions = document.getElementById("route-actions");

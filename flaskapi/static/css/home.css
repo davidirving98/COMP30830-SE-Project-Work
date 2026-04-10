@@ -3,10 +3,8 @@ body {
   font-family: Arial, sans-serif;
   background: #f7f7f7;
   color: #222;
-  padding-top: 80px;
+  padding-top: 80px; /* accounts for fixed header */
 }
-
-
 
 footer {
   text-align: center;
@@ -56,7 +54,7 @@ footer {
 .weather-center {
   gap: 18px;
   font-size: 16px;
-  position: absolute;
+  position: absolute; /* centers content horizontally*/
   left: 50%;
   transform: translateX(-50%);
   max-width: 50%;
@@ -85,6 +83,21 @@ footer {
   margin-bottom: 5px;
 }
 
+/* Header logo */
+.logo-header {
+  font-size: 32px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Bottom location */
+.bottom-bar .location {
+  font-size: 16px;
+  font-weight: 600;
+  color: #555;
+}
 
 #temperature {
   font-size: 26px;
@@ -144,7 +157,7 @@ footer {
 
 #map {
   width: 100%;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 120px); /* relative to viewport*/
   margin-top: 0;
   z-index: 1;
   position: relative;
@@ -176,16 +189,19 @@ input {
 }
 
 button {
-  padding: 8px 14px;
+  padding: clamp(6px, 1vw, 12px) clamp(10px, 2vw, 16px);
+  font-size: clamp(12px, 1vw, 14px);
   border: 0;
   border-radius: 6px;
   background: #0b6efd;
   color: #fff;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 button:hover {
   background: #0959cc;
+  transform: translateY(-1px);
 }
 
 .bottom-bar {
@@ -202,6 +218,8 @@ button:hover {
   align-items: center;
   padding: 12px 24px;
   z-index: 1000;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .logo {
@@ -212,6 +230,9 @@ button:hover {
 .stats {
   display: flex;
   gap: 20px;
+  position: relative;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .stat {
@@ -249,6 +270,7 @@ button:hover {
   display: flex;
   align-items: center;
   gap: 30px;
+  flex-wrap: wrap;
 }
 
 .bottom-right {
@@ -272,7 +294,7 @@ button:hover {
 .modal {
   display: none;
   position: fixed;
-  z-index: 2000;
+  z-index: 99999; /* Keep above all other layers */
   left: 0;
   top: 0;
   width: 100%;
@@ -280,6 +302,13 @@ button:hover {
   background: rgba(0,0,0,0.35);
   justify-content: center;
   align-items: center;
+  padding-top: 40px;
+  backdrop-filter: blur(6px);
+}
+
+/* Show welcome modal only */
+.modal.show {
+  display: flex;
 }
 
 .modal-content {
@@ -474,12 +503,12 @@ button:hover {
   margin-top: 18px;
 }
 
-.welcome-step p{
+.welcome-step p {
   margin: 4px 0 0;
   color: #555;
 }
 
-.icon{
+.icon {
   width: 44px;
   height: 44px;
   min-width: 44px;
@@ -491,33 +520,37 @@ button:hover {
   line-height: 1;
 }
 
-.icon.blue{
+.icon.blue {
   background: #dbeafe;
 }
 
-.icon.green{
+.icon.green {
   background: #dcfce7;
 }
 
-.icon.purple{
+.icon.purple {
   background: #ede9fe;
 }
 
-.marker-box{
+.icon.yellow {
+  background: #fef9c3;
+}
+
+.marker-box {
   background: #f3f4f6;
   padding: 16px;
   border-radius: 10px;
   margin-top: 20px;
 }
 
-.marker-grid{
+.marker-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 10px;
 }
 
-.start-btn{
+.start-btn {
   margin-top: 20px;
   width: 100%;
   padding: 12px;
@@ -533,8 +566,8 @@ button:hover {
 .drawer {
   position: fixed;
   top: 0;
-  left: -350px;
-  width: 350px;
+  left: -100%; /* hidden side drawer */
+  width: 380px;
   height: 100%;
   background: white;
   box-shadow: 2px 0 15px rgba(0,0,0,0.2);
@@ -542,7 +575,24 @@ button:hover {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  height: 100%;
+}
+
+/* Add visual separation between route & prediction */
+.drawer-section {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prediction-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+}
+.pac-container {
+  z-index: 999999;
+  position: fixed;
 }
 .pac-container {
   z-index: 999999;
@@ -564,8 +614,15 @@ button:hover {
 
 .drawer-body {
   padding: 20px;
-  overflow: visible;
+  overflow-y: auto;
   flex: 1;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  min-height: 0;
 }
 
 .predict-panel {
@@ -621,7 +678,8 @@ button:hover {
 }
 
 .hidden {
-  display: none;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .route-summary {
@@ -660,6 +718,16 @@ button:hover {
   background: #f9fafb;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Override hidden ONLY for route steps */
+.segment-steps.hidden {
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden; 
+  margin: 0 !important;
+  padding: 0 !important
 }
 
 .step-distance {
@@ -706,3 +774,217 @@ button:hover {
     transform: translateY(-1px);
     opacity: 0.9;
 }
+
+/* Accessibility functions - high contrast colour scheme */
+.high-contrast {
+  background-color: #000;
+  color: #fff;
+}
+
+/* Core layout elements */
+.high-contrast .top-bar,
+.high-contrast .bottom-bar,
+.high-contrast .drawer,
+.high-contrast .modal-content,
+.high-contrast .welcome-content,
+.high-contrast footer {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* Target ONLY text elements */
+.high-contrast .top-bar,
+.high-contrast .top-bar span,
+.high-contrast .top-bar div,
+
+.high-contrast .bottom-bar,
+.high-contrast .bottom-bar span,
+.high-contrast .bottom-bar div,
+
+.high-contrast .drawer,
+.high-contrast .drawer span,
+.high-contrast .drawer div,
+
+.high-contrast .modal-content,
+.high-contrast .welcome-content,
+.high-contrast footer {
+  color: #fff !important;
+  border-color: #fff !important;
+}
+
+/* Cards / panels */
+.high-contrast .forecast-card,
+.high-contrast .route-status,
+.high-contrast .account-card,
+.high-contrast .stat-box,
+.high-contrast .step,
+.high-contrast .segment-header {
+  background-color: #111 !important;
+  border: 1px solid #fff !important;
+}
+
+/* Inputs */
+.high-contrast input {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
+}
+
+.high-contrast input::placeholder {
+  color: #ccc !important;
+}
+
+/* Buttons */
+.high-contrast button {
+  background-color: #fff !important;
+  color: #000 !important;
+  border: 2px solid #fff !important;
+  font-weight: 600;
+}
+
+/* Secondary buttons */
+.high-contrast .btn.secondary {
+  background-color: #333 !important;
+  color: #fff !important;
+}
+
+/* Search dropdown */
+.high-contrast .search-results {
+  background-color: #000 !important;
+  border: 1px solid #fff !important;
+}
+
+.high-contrast .search-item:hover {
+  background-color: #222 !important;
+}
+
+/* Weather */
+.high-contrast .weather-item,
+.high-contrast .forecast-card,
+.high-contrast .location {
+  color: #fff !important;
+}
+
+/* Drawer header */
+.high-contrast .drawer-header {
+  background-color: #000 !important;
+  border-bottom: 1px solid #fff;
+}
+
+/* Route segments */
+.high-contrast .segment-header {
+  background-color: #111 !important;
+}
+
+/* Map popup */
+.high-contrast .map-popup {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/*Focus accessibility */
+.high-contrast *:focus {
+  outline: 3px solid yellow !important;
+  outline-offset: 2px;
+}
+
+/* Only invert icons that need it */
+.high-contrast .bottom-bar img,
+.high-contrast .top-bar img {
+  filter: brightness(0) invert(1);
+}
+
+.high-contrast .gm-style-iw {
+  background: #fff !important;
+  color: #000 !important;
+}
+
+/* Ensure account icon stays visible */
+.high-contrast #account-btn img {
+  filter: none !important;
+}
+
+/* Container for accessibility functions */
+.accessibility-menu {
+  position: absolute;
+  bottom: 110%;
+  left: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+}
+
+.accessibility-wrapper {
+  position: relative;
+}
+
+.accessibility-menu.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Buttons inside menu */
+.accessibility-menu button {
+  background: #f3f4f6;
+  color: #111;
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+/* High contrast support */
+.high-contrast .accessibility-menu {
+  background: #000;
+  border: 1px solid #fff;
+}
+
+.high-contrast .accessibility-menu button {
+  background: #111;
+  color: #fff;
+}
+
+/* Ensure modal text is always visible */
+.high-contrast .welcome-content,
+.high-contrast .welcome-content * {
+  color: #fff !important;
+}
+
+.high-contrast .marker-box {
+  background: #111 !important;
+  color: #fff !important;
+}
+
+.high-contrast .marker-grid div {
+  color: #fff !important;
+}
+
+.high-contrast .start-btn {
+  background: #fff !important;
+  color: #000 !important;
+  border: 2px solid #fff !important;
+}
+
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  z-index: 9999;
+  font-size: 14px;
+}
+
