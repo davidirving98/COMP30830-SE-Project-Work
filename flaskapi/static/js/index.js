@@ -98,6 +98,7 @@ async function predictByInput() {
             ? data.pred_available_bikes[0]
             : data.pred_available_bikes;
         resultEl.innerText = `Predicted available bikes: ${pred}`;
+        speak(`${pred} bikes expected at ${currentStation?.name || "this station"}`);
     } catch (err) {
         resultEl.innerText = `Error: ${err.message}`;
     }
@@ -478,8 +479,9 @@ function confirmPoint(type, lat, lng) {
             });
         }
 
-        document.getElementById("route-status").innerText =
+        document.getElementById("route-summary").innerText =
             "Start selected — now choose destination";
+        speak("Start selected. Now choose your destination or type it into the destination bar");
 
         clickStage = "end";
         infoWindow.close();
@@ -513,7 +515,7 @@ function confirmPoint(type, lat, lng) {
             });
         }
 
-        document.getElementById("route-status").innerText =
+        document.getElementById("route-summary").innerText =
             "Route calculating...";
 
         clickStage = "start";
@@ -682,6 +684,7 @@ function openDrawer(station = null) {
 
     } else {
     document.getElementById("drawer-title").innerText = "Route Planner";
+    speak("Plan your route. Select a starting point on the map or type it into the starting location bar");
     }
     
     drawer.classList.add("open");
@@ -709,6 +712,12 @@ function calculateSmartRoute(start, end) {
 
     const startStation = getNearestStartStation(start);
     const endStation = getNearestEndStation(end);
+    
+    // Enable prediction of nearest start station's bikes
+    const predictInput = document.getElementById("predict-station-id");
+        if (predictInput && startStation) {
+            predictInput.value = startStation.number;
+        }
 
     if (!startStation || !endStation) {
         alert("No nearby stations available");
@@ -857,7 +866,7 @@ function drawSegments(segments) {
 
                     const orderedHTML = segmentResults.join("");
 
-                    document.getElementById("route-status").innerHTML = `
+                    document.getElementById("route-summary").innerHTML = `
                         <div class="route-summary">
                              🚲 ${km} km • ⏱️ ${mins} mins
                         </div>
@@ -874,7 +883,15 @@ function drawSegments(segments) {
                     // Fit FULL route bounds
                     const bounds = new google.maps.LatLngBounds();
                     routePoints.forEach(point => bounds.extend(point));
-                    map.fitBounds(bounds, 80);
+                    const drawer = document.getElementById("drawer"); // View full route with drawer open/closed
+                    const drawerWidth = drawer.classList.contains("open") ? drawer.offsetWidth : 0;
+
+                    map.fitBounds(bounds, {
+                        top: 80,
+                        bottom: 80,
+                        left: drawerWidth + 40,
+                        right: 80
+                    });
                 }
 
             } else {
@@ -913,7 +930,7 @@ function clearRoute() {
     routeMarkers.forEach(marker => marker.setMap(null));
     routeMarkers = [];
     
-    document.getElementById("route-status").innerText = "No route selected";
+    document.getElementById("route-summary").innerText = "No route selected";
 
     // Clear start/end markers
     if (startMarker) {
@@ -1073,7 +1090,7 @@ function resetRoute() {
     // Clear the inputs in the drawer
     document.getElementById("start-input").value = "";
     document.getElementById("end-input").value = "";
-    document.getElementById("route-status").innerText = "No route selected";
+    document.getElementById("route-summary").innerText = "No route selected";
     
     // hide buttons
     const actions = document.getElementById("route-actions");

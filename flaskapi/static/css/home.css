@@ -196,10 +196,12 @@ button {
   background: #0b6efd;
   color: #fff;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 button:hover {
   background: #0959cc;
+  transform: translateY(-1px);
 }
 
 .bottom-bar {
@@ -612,8 +614,15 @@ button:hover {
 
 .drawer-body {
   padding: 20px;
-  overflow: visible;
+  overflow-y: auto;
   flex: 1;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  min-height: 0;
 }
 
 .predict-panel {
@@ -709,6 +718,16 @@ button:hover {
   background: #f9fafb;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Override hidden ONLY for route steps */
+.segment-steps.hidden {
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden; 
+  margin: 0 !important;
+  padding: 0 !important
 }
 
 .step-distance {

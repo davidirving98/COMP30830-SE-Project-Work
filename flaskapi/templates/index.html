@@ -299,47 +299,54 @@
   </div>
 
 <!-- Drawer (Route & Prediction) -->
-  
 <div id="drawer" class="drawer">
   
+  <!-- HEADER (fixed, not scrollable) -->
   <div class="drawer-header">
-    <h2 id="drawer-title">Station</h2>
+    <h2 id="drawer-title">Route Planner</h2>
     
     <div id="route-actions" style="display: none;">
       <button id="swap-btn">🔁 Swap</button>
       <button id="reset-btn">❌ Clear Route</button>
     </div>
     
-    <span id="close-drawer" class="close">&times;</span></div>
-  
-  <div class="drawer-section">
-    <input id="start-input" placeholder="Enter your starting location">
-    <input id="end-input" placeholder="Enter your destination">
-    <button id="route-btn">🚲 Get Route</button>
+    <span id="close-drawer" class="close">&times;</span>
   </div>
 
+  <!-- SINGLE SCROLLABLE AREA -->
+  <div class="drawer-content">
 
-  <!-- Prediction panel: user inputs station number + datetime -->
-  <div class="drawer-section prediction-section">
-    <input id="predict-station-id" type="number" placeholder="Station number (e.g. 32)">
-    <input id="predict-datetime" type="datetime-local">
-    <button id="predict-btn"> ⭐  Predict Bikes ⭐ </button>
-  </div>
-  <div class="drawer-body">
-    <div class="route-status" id="predict-result">Prediction result will appear here</div>
-  </div>
-  
-  <div class="drawer-body">
+    <!-- ROUTE SECTION -->
+    <div id="route-section" class="drawer-section">
+      <h4>Route Planning</h4>
+      
+      <input id="start-input" placeholder="Enter your starting location">
+      <input id="end-input" placeholder="Enter your destination">
+      
+      <button id="route-btn">🚲 Get Route</button>
+    </div>
 
-    
-    <div class="drawer-buttons">
-    
-    <div class="route-status" id="route-status">No route selected</div>
-    
+    <!-- PREDICTION SECTION -->
+    <div id="prediction-section" class="drawer-section prediction-section">
+      <h4>Bike Prediction</h4>
 
-    
-  </div>
-      <div id="route-container"></div>
+      <input id="predict-station-id" type="number" placeholder="Station number (e.g. 32)">
+      <input id="predict-datetime" type="datetime-local">
+      
+      <button id="predict-btn">⭐ Predict Bikes ⭐</button>
+
+      <div class="route-status" id="predict-result">
+        Prediction result will appear here
+      </div>
+    </div>
+
+    <!-- ROUTE OUTPUT -->
+    <div id="route-summary" class="route-status">
+      No route selected
+    </div>
+
+    <div id="route-container"></div>
+
   </div>
 </div>
 
