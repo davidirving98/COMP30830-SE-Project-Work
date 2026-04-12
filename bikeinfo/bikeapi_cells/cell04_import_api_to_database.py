@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from importlib.util import module_from_spec, spec_from_file_location
 import sqlalchemy as sqla
 from pathlib import Path
@@ -65,6 +65,11 @@ ON DUPLICATE KEY UPDATE
     status = VALUES(status),
     bikes_1d_mean = VALUES(bikes_1d_mean),
     bikes_same_slot_mean = VALUES(bikes_same_slot_mean);
+""")
+
+delete_old_availability_sql = sqla.text("""
+DELETE FROM availability
+WHERE last_update IS NOT NULL AND last_update < :cutoff_utc
 """)
 
 history_query_template = """
@@ -139,6 +144,19 @@ def get_station_history_means(conn, station_number, target_time):
     return bikes_1d_mean, bikes_same_slot_mean
 
 
+def prune_old_availability(conn, retention_days=7):
+    cutoff_utc = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    result = conn.execute(
+        delete_old_availability_sql,
+        {"cutoff_utc": cutoff_utc},
+    )
+    deleted = result.rowcount if result.rowcount is not None else 0
+    print(
+        f"Pruned availability rows older than {retention_days} days: {deleted}",
+        flush=True,
+    )
+
+
 def import_once():
     # Execute one pull + insert
     resp = requests.get(config.BIKE_STATUS_URL, timeout=20)
@@ -181,6 +199,7 @@ def import_once():
         })
 
     with engine.begin() as conn:
+        prune_old_availability(conn, retention_days=7)
         for row in availability_rows:
             bikes_1d_mean, bikes_same_slot_mean = get_station_history_means(
                 conn, row["number"], row["last_update"]

@@ -28,6 +28,24 @@ from ml_service import (
 app = Flask(__name__)
 
 
+def _normalize_station_payload(raw_data):
+    """Map JCDecaux raw station rows to frontend station schema."""
+    result = []
+    for s in raw_data or []:
+        pos = s.get("position") or {}
+        result.append(
+            {
+                "number": s.get("number"),
+                "name": s.get("name"),
+                "available_bikes": s.get("available_bikes"),
+                "available_stands": s.get("available_bike_stands"),
+                "lat": pos.get("lat"),
+                "lng": pos.get("lng"),
+            }
+        )
+    return result
+
+
 @app.route("/")
 def index():
     return render_template("index.html", apikey=config.GOOGLE_MAPS_API_KEY)
@@ -40,8 +58,25 @@ def stations():
         # API polling is handled by the background importer (cell04).
         data = get_latest_stations_view()
         return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": f"/stations failed: {str(e)}"}), 500
+    except Exception as db_error:
+        # Fallback: if DB is unavailable, return live data so map markers can still render.
+        try:
+            raw_data = fetch_stations_raw()
+            if raw_data is None:
+                return jsonify({"error": f"/stations failed: {str(db_error)}"}), 500
+            return jsonify(_normalize_station_payload(raw_data))
+        except Exception as api_error:
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            f"/stations failed: db={str(db_error)}; "
+                            f"fallback_api={str(api_error)}"
+                        )
+                    }
+                ),
+                500,
+            )
 
 
 @app.route("/stations/refresh")
