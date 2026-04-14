@@ -75,6 +75,42 @@ def test_stations_success_returns_payload(client): # test stations endpoint in b
     assert resp.get_json() == fake_data
 
 
+def test_stations_db_failure_falls_back_to_live_api_payload(client):
+    raw_data = [
+        {
+            "number": 12,
+            "name": "Station 12",
+            "available_bikes": 5,
+            "available_bike_stands": 10,
+            "position": {"lat": 53.3, "lng": -6.2},
+        }
+    ]
+    with patch.object(app_module, "get_latest_stations_view", side_effect=RuntimeError("db down")):
+        with patch.object(app_module, "fetch_stations_raw", return_value=raw_data):
+            resp = client.get("/stations")
+
+    assert resp.status_code == 200
+    assert resp.get_json() == [
+        {
+            "number": 12,
+            "name": "Station 12",
+            "available_bikes": 5,
+            "available_stands": 10,
+            "lat": 53.3,
+            "lng": -6.2,
+        }
+    ]
+
+
+def test_stations_returns_500_when_db_fails_and_fallback_api_unavailable(client):
+    with patch.object(app_module, "get_latest_stations_view", side_effect=RuntimeError("db down")):
+        with patch.object(app_module, "fetch_stations_raw", return_value=None):
+            resp = client.get("/stations")
+
+    assert resp.status_code == 500
+    assert "/stations failed: db down" in resp.get_json()["error"]
+
+
 def test_station_history_exception_returns_500(client): # test on database connection failure when fetching station history  in bikeinfo_SQL.py
     with patch.object(app_module, "get_station_history_sql", side_effect=RuntimeError("db down")):
         resp = client.get("/station/42/history")
