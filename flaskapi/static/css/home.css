@@ -1,3 +1,7 @@
+/* =========================================
+   GLOBAL STYLES
+   Base layout, typography, and page defaults
+========================================= */
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -13,6 +17,9 @@ footer {
   margin-top: 30px;
 }
 
+/* =========================================
+   HEADER (TOP BAR + WEATHER DISPLAY)
+========================================= */
 .top-bar {
   position: fixed;
   top: 0;
@@ -92,13 +99,6 @@ footer {
   gap: 6px;
 }
 
-/* Bottom location */
-.bottom-bar .location {
-  font-size: 16px;
-  font-weight: 600;
-  color: #555;
-}
-
 #temperature {
   font-size: 26px;
   font-weight: bold;
@@ -108,6 +108,9 @@ footer {
   color: #555;
 }
 
+/* =========================================
+   WEATHER FORECAST CARDS
+========================================= */
 .forecast-card {
   width: 100px;
   padding: 6px 10px;
@@ -154,7 +157,9 @@ footer {
   color: #6b7280;
 }
 
-
+/* =========================================
+   MAP CONTAINER
+========================================= */
 #map {
   width: 100%;
   height: calc(100vh - 120px); /* relative to viewport*/
@@ -163,6 +168,9 @@ footer {
   position: relative;
 }
 
+/* =========================================
+   GENERAL UI ELEMENTS (FORMS, BUTTONS, LAYOUT)
+========================================= */
 .container {
   max-width: 760px;
   margin: 32px auto;
@@ -204,6 +212,9 @@ button:hover {
   transform: translateY(-1px);
 }
 
+/* =========================================
+   BOTTOM BAR (SEARCH, STATS, ACTIONS)
+========================================= */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -220,6 +231,13 @@ button:hover {
   z-index: 1000;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* Bottom location */
+.bottom-bar .location {
+  font-size: 16px;
+  font-weight: 600;
+  color: #555;
 }
 
 .logo {
@@ -291,6 +309,9 @@ button:hover {
   cursor: pointer;
 }
 
+/* =========================================
+   MODALS (WELCOME + ACCOUNT)
+========================================= */
 .modal {
   display: none;
   position: fixed;
@@ -301,9 +322,10 @@ button:hover {
   height: 100%;
   background: rgba(0,0,0,0.35);
   justify-content: center;
-  align-items: center;
-  padding-top: 40px;
+  align-items: flex-start;
+  padding: 40px 20px;
   backdrop-filter: blur(6px);
+  overflow-y: auto;
 }
 
 /* Show welcome modal only */
@@ -473,12 +495,18 @@ button:hover {
 .search-item:hover{
   background: #f3f4f6;
 }
+
+/* =========================================
+   WELCOME MODAL CONTENT
+========================================= */
 .welcome-content{
   background: white;
   width: 500px;
   max-width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
   border-radius: 14px;
-  overflow: hidden;
+  margin: auto;
 }
 
 .welcome-header{
@@ -563,6 +591,9 @@ button:hover {
   cursor: pointer;
 }
 
+/* =========================================
+   DRAWER (ROUTE PLANNER + PREDICTION PANEL)
+========================================= */
 .drawer {
   position: fixed;
   top: 0;
@@ -589,10 +620,6 @@ button:hover {
   margin-top: 30px;
   padding-top: 20px;
   border-top: 1px solid #ddd;
-}
-.pac-container {
-  z-index: 999999;
-  position: fixed;
 }
 .pac-container {
   z-index: 999999;
@@ -682,6 +709,9 @@ button:hover {
   pointer-events: none !important;
 }
 
+/* =========================================
+   ROUTE DISPLAY (SEGMENTS, STEPS, SUMMARY)
+========================================= */
 .route-summary {
   font-weight: 700;
   font-size: 16px;
@@ -735,6 +765,9 @@ button:hover {
   font-size: 12px;
 }
 
+/* =========================================
+   MAP POPUP (INFO WINDOW CONTENT)
+========================================= */
 .map-popup {
     min-width: 200px;
     padding: 12px;
@@ -775,7 +808,9 @@ button:hover {
     opacity: 0.9;
 }
 
-/* Accessibility functions - high contrast colour scheme */
+/* =========================================
+   ACCESSIBILITY (HIGH CONTRAST MODE)
+========================================= */
 .high-contrast {
   background-color: #000;
   color: #fff;
@@ -904,7 +939,13 @@ button:hover {
   filter: none !important;
 }
 
-/* Container for accessibility functions */
+.high-contrast .profile-icon img {
+  filter: invert(1) brightness(2);
+}
+
+/* =========================================
+   ACCESSIBILITY MENU (DROPDOWN CONTROLS FOR FUNCTIONS)
+========================================= */
 .accessibility-menu {
   position: absolute;
   bottom: 110%;
@@ -975,6 +1016,9 @@ button:hover {
   border: 2px solid #fff !important;
 }
 
+/* =========================================
+   TOAST NOTIFICATIONS
+========================================= */
 .toast {
   position: fixed;
   bottom: 100px;

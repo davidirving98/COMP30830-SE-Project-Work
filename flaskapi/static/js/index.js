@@ -1,8 +1,43 @@
+/* =========================================
+   WheelyWise Frontend Script
+
+   Handles:
+   - Google Maps integration
+   - Station data fetching
+   - Route planning logic
+   - Weather display
+   - Accessibility features (Text-to-Speech, high contrast mode)
+   - UI interactions (modals, drawer, search)
+
+   ========================================= */
+
+
+/* =========================================
+   GLOBAL STATE
+========================================= */
+
 // Global array for storing the station data from the API
 let stations = [];
 
+// Initialise route mapping variables
+let selectedStart = null;
+let selectedEnd = null;
+let currentStation = null;
+let activeRenderers = [];
+let clickMarkers = [];
+let routeMarkers = [];
+let startMarker = null;
+let endMarker = null;
+
+// reverse geocoding from Google Maps
+let geocoder;
+
 // Accessibility: Text-to-Speech
 let speechEnabled = false;
+
+/* =========================================
+   ACCESSIBILITY MODULE
+========================================= */
 
 // Text-to-Speech function
 function speak(text) {
@@ -31,28 +66,27 @@ function showToast(message) {
     }, 2000);
 }
 
-// Initialise route mapping variables
-let selectedStart = null;
-let selectedEnd = null;
-let currentStation = null;
-let activeRenderers = [];
-let clickMarkers = [];
-let routeMarkers = [];
-let startMarker = null;
-let endMarker = null;
-
-// reverse geocoding from Google Maps
-let geocoder;
-
 // Load Google Charts once to speed up
 google.charts.load('current', { packages: ['corechart'] });
 
+/**
+ * Converts a Date object into a datetime-local input format
+ * @param {Date} d - JavaScript Date object
+ * @returns {string} formatted datetime string (YYYY-MM-DDTHH:mm)
+ */
 function toLocalDatetimeValue(d) {
     const pad = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // Initialises prediction input controls and limits date range
+/**
+ * Initialises prediction input controls:
+ * - Sets min/max datetime range (now → +7 days)
+ * - Sets default value to current time
+ * - Attaches click listener to prediction button
+ * @returns {void}
+ */
 function initPredictControls() {
     const dtInput = document.getElementById("predict-datetime");
     const btn = document.getElementById("predict-btn");
@@ -68,6 +102,17 @@ function initPredictControls() {
     btn.addEventListener("click", predictByInput);
 }
 
+// Provides prediction capacity by station input
+/**
+ * Sends prediction request to backend API based on user input.
+ * 
+ * - Validates station ID and datetime
+ * - Formats datetime for API
+ * - Displays prediction result in UI
+ * - Uses Text-to-Speech to announce result
+ * @async
+ * @returns {Promise<void>}
+ */
 async function predictByInput() {
     const stationInput = document.getElementById("predict-station-id");
     const dtInput = document.getElementById("predict-datetime");
@@ -104,6 +149,17 @@ async function predictByInput() {
     }
 }
 
+// Adding markers for the bike stations
+/**
+ * Creates and adds map markers for all bike stations.
+ * For each station:
+ * - Assigns a color based on availability
+ * - Adds marker to Google Map
+ * - Attaches click listener to show info window
+ * - Displays station history chart using Google Charts
+ * @param {Array<Object>} stations - List of station objects from API
+ * @returns {void}
+ */
 function addMarkers(stations) {
     console.log(stations);
     // Create a marker for each station
@@ -225,6 +281,14 @@ function addMarkers(stations) {
     }
 }
 
+
+/**
+ * Fetches station data from backend API and:
+ * - Stores it globally
+ * - Creates map markers
+ * - Updates UI stats
+ * @returns {void}
+ */
 function getStations() {
     // Send a request to the "/stations" endpoint in our flask function to retrieve station data
     fetch("/stations")
@@ -259,7 +323,17 @@ function getStations() {
         });
 }
 
-// display current weather information
+// Display current weather information
+/**
+ * Fetches and displays current weather data from backend API.
+ * Updates:
+ * - Temperature
+ * - Weather description
+ * - Wind speed
+ * - Humidity
+ * @async
+ * @returns {Promise<void>}
+ */
 async function loadCurrentWeather() {
     try{
         const response = await fetch("/weather");
@@ -276,7 +350,17 @@ async function loadCurrentWeather() {
     }
 }
 
-// display forecast weather information
+// Display forecast weather information
+/**
+ * Fetches and displays short-term weather forecast.
+ * Updates two forecast cards with:
+ * - Time
+ * - Temperature
+ * - Weather description
+ * - Humidity
+ * @async
+ * @returns {Promise<void>}
+ */
 async function loadForecast() {
     try {
         const response = await fetch("/forecast");
@@ -362,7 +446,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Initialize and add the map
-
 let darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
@@ -374,6 +457,18 @@ let darkMapStyle = [
   }
 ];
 
+
+// Initialise the map
+/**
+ * Initialises Google Map and core map functionality.
+ * Responsibilities:
+ * - Sets map center (Dublin) and bounds restriction
+ * - Enables click-to-select start/end points
+ * - Creates markers for user-selected points
+ * - Handles confirmation popup (start vs destination)
+ * - Loads station markers and autocomplete inputs
+ * @returns {void}
+ */
     function initMap() {
         const dublin = { lat: 53.35014, lng: -6.266155 };
         
@@ -446,6 +541,19 @@ let darkMapStyle = [
 });
 });
 
+// Confirm a selected point as start/destination        
+/**
+ * Confirms selected map point as start or destination.
+ * - Updates global state (selectedStart / selectedEnd)
+ * - Places labeled marker (A or D)
+ * - Reverse geocodes coordinates to address
+ * - Updates UI inputs and route summary
+ * - Triggers route calculation when destination is set
+ * @param {"start"|"end"} type - Type of point being set
+ * @param {number} lat - Latitude of selected point
+ * @param {number} lng - Longitude of selected point
+ * @returns {void}
+ */
 function confirmPoint(type, lat, lng) {
     const location = { lat, lng };
 
@@ -527,6 +635,13 @@ function confirmPoint(type, lat, lng) {
     }
 }
 
+// Cancel a selected point
+/**
+ * Cancels current map point selection.
+ * - Removes temporary markers
+ * - Closes info window popup 
+ * @returns {void}
+ */   
 function cancelPoint() {
     clickMarkers.forEach(m => m.setMap(null));
     clickMarkers = [];
@@ -545,6 +660,11 @@ function cancelPoint() {
     initAutocomplete();
 }
 
+/**
+ * Checks whether a given location is within Dublin bounds.
+ * @param {Object} location - {lat, lng}
+ * @returns {boolean} true if within allowed area
+ */
 function isWithinDublin(location) {
     return (
         location.lat >= 53.25 &&
@@ -555,6 +675,11 @@ function isWithinDublin(location) {
 }
 
 // Function to decide the marker colour
+/**
+ * Determines marker color based on station availability
+ * @param {Object} station
+ * @returns {string} color name (blue, red, green, grey)
+ */
 function getStationColor(station) {
 
     if (station.available_bikes === 0 && station.available_stands === 0) {
@@ -669,24 +794,36 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Routing Slide Drawer
+/**
+ * Opens or toggles the route planner drawer.
+ * If a station is provided, populates prediction input.
+ * @param {Object|null} station - Selected station (optional)
+ */
 function openDrawer(station = null) {
     const drawer = document.getElementById("drawer");
     if (!drawer) return;
 
-    const title = document.getElementById("drawer-title");
+    // Toggle instead of always open
+    const isOpen = drawer.classList.contains("open");
 
-    
+    if (isOpen) {
+        drawer.classList.remove("open");
+        return;
+    }
+
+    // Otherwise open it
     if (station) {
         currentStation = station;
-    document.getElementById("drawer-title").innerText = station.name;
-    const sid = document.getElementById("predict-station-id");
-    if (sid) sid.value = station.number;
+        document.getElementById("drawer-title").innerText = station.name;
+
+        const sid = document.getElementById("predict-station-id");
+        if (sid) sid.value = station.number;
 
     } else {
-    document.getElementById("drawer-title").innerText = "Route Planner";
-    speak("Plan your route. Select a starting point on the map or type it into the starting location bar");
+        document.getElementById("drawer-title").innerText = "Route Planner";
+        speak("Plan your route. Select a starting point on the map or type it into the starting location bar");
     }
-    
+
     drawer.classList.add("open");
 }
 
@@ -695,6 +832,16 @@ function closeDrawer()  {
 }
 
 // Routing Function
+/**
+ * Calculates an optimal bike route using:
+ * - Walking → Start Station
+ * - Cycling → End Station
+ * - Walking → Destination
+ * @param {Object} start - {lat, lng} starting coordinates
+ * @param {Object} end - {lat, lng} destination coordinates
+ * @returns {void}
+ */
+
 function calculateSmartRoute(start, end) {
     infoWindow.close();
     if (stations.length === 0) {
@@ -762,6 +909,17 @@ function calculateSmartRoute(start, end) {
 
     drawSegments(segments);
 }
+// Providing the segmented journey visual
+/**
+ * Draws multi-segment route on the map.
+ * - Renders walking and cycling segments
+ * - Places A → B → C → D markers
+ * - Calculates total distance and duration
+ * - Displays step-by-step instructions
+ * - Adjusts map bounds to fit full route
+ * @param {Array<Object>} segments - Route segments definition
+ * @returns {void}
+ */
 
 function drawSegments(segments) {
     let totalDistance = 0;
@@ -900,7 +1058,13 @@ function drawSegments(segments) {
         });
     });
 }
-// Display route overview & details
+// Display route overview & details (without overcrowding page)
+/**
+ * Toggles visibility of route segment steps.
+ * Expands/collapses detailed instructions for a segment.
+ * @param {number} index - Segment index
+ * @returns {void}
+ */
 function toggleSegment(index) {
     const el = document.getElementById(`segment-${index}`);
     const header = el.previousElementSibling;
@@ -915,6 +1079,13 @@ function toggleSegment(index) {
 }
 
 // Clear route after use
+/**
+ * Clears all route-related elements from the map and UI.
+ * - Removes route lines and markers
+ * - Resets route summary display
+ * - Clears start/end markers
+ * @returns {void}
+ */
 function clearRoute() {
     activeRenderers.forEach(renderer => {
         renderer.setMap(null); // removes from map
@@ -966,6 +1137,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
+// Find the nearest station with a bike
+/**
+ * Finds the nearest station with available bikes.
+ * @param {Object} point - {lat, lng}
+ * @returns {Object|null} closest station or null if none found
+ */
 function getNearestStartStation(point) {
     let closest = null;
     let minDistance = Infinity;
@@ -987,6 +1164,12 @@ function getNearestStartStation(point) {
     return closest;
 }
 
+// Find the nearest station with a stand
+/**
+ * Finds the nearest station with available stands.
+ * @param {Object} point - {lat, lng}
+ * @returns {Object|null} closest station or null if none found
+ */
 function getNearestEndStation(point) {
     let closest = null;
     let minDistance = Infinity;
@@ -1008,6 +1191,13 @@ function getNearestEndStation(point) {
     return closest;
 }
 
+// Automatically finish what the user is typing for route inputs
+/**
+ * Initialises Google Places autocomplete for route inputs.
+ * - Restricts results to Ireland
+ * - Updates selectedStart and selectedEnd on selection
+ * @returns {void}
+ */
 function initAutocomplete() {
     const startInput = document.getElementById("start-input");
     const endInput = document.getElementById("end-input");
@@ -1062,6 +1252,12 @@ function initAutocomplete() {
 }
 
 // If a user wants to swap their start and end points
+/**
+ * Swaps start and destination locations. 
+ * - Exchanges coordinates and input values
+ * - Recalculates route
+ * @returns {void}
+ */
 function swapRoute() {
     if (!selectedStart || !selectedEnd) return;
     
@@ -1079,6 +1275,14 @@ function swapRoute() {
 }
 
 // Reset the screen
+/**
+ * Resets route planning state and UI.
+ * - Clears map route
+ * - Resets selected start/end points
+ * - Clears input fields
+ * - Hides route action buttons
+ * @returns {void}
+ */
 function resetRoute() {
     // Clear the route line
     clearRoute();
