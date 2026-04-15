@@ -37,14 +37,26 @@ except Exception:
 
 
 def _features():
-    """返回模型实际使用的特征顺序。"""
+    """
+    Return model feature names in prediction order.
+
+    :returns: Ordered feature names used for inference.
+    :rtype: list[str]
+    """
     if MODEL is not None and hasattr(MODEL, "feature_names_in_"):
         return list(MODEL.feature_names_in_)
     return list(MODEL_FEATURES)
 
 
 def _build_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    """把输入 DataFrame 对齐成模型期望的特征矩阵。"""
+    """
+    Align input rows to the model's expected feature columns.
+
+    :param df: Input feature rows.
+    :type df: pandas.DataFrame
+    :returns: Feature matrix aligned to model columns.
+    :rtype: pandas.DataFrame
+    """
     expected = _features()
     if not expected:
         raise ValueError("Model feature metadata is empty.")
@@ -71,21 +83,46 @@ def _build_matrix(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _post_process(raw_pred, capacity=None):
-    """预测后处理：小值归零、按容量截断、四舍五入为整数。"""
+    """
+    Post-process predictions with thresholding, clipping, and rounding.
+
+    :param raw_pred: Raw model predictions.
+    :type raw_pred: array-like
+    :param capacity: Optional station capacity upper bound.
+    :type capacity: array-like | float | None
+    :returns: Integer bike predictions.
+    :rtype: numpy.ndarray
+    """
     pred = np.where(raw_pred < 3, 0, raw_pred)
     pred = np.clip(pred, 0, capacity if capacity is not None else None)
     return np.rint(pred).astype(int)
 
 
 def _to_utc_pair(local_naive_dt: datetime):
-    """将 Dublin 本地无时区时间转换为 UTC（aware + naive）。"""
+    """
+    Convert a Dublin local naive datetime to UTC aware/naive pair.
+
+    :param local_naive_dt: Local datetime without tzinfo.
+    :type local_naive_dt: datetime
+    :returns: ``(utc_aware, utc_naive)`` pair.
+    :rtype: tuple[datetime, datetime]
+    """
     local_aware = local_naive_dt.replace(tzinfo=APP_LOCAL_TZ)
     utc_aware = local_aware.astimezone(timezone.utc)
     return utc_aware, utc_aware.replace(tzinfo=None)
 
 
 def _pick_forecast(target_utc_aware, forecast_rows):
-    """从 forecast 序列里选与目标 UTC 时间最接近的一条。"""
+    """
+    Pick the forecast row closest to the target UTC time.
+
+    :param target_utc_aware: Target UTC datetime.
+    :type target_utc_aware: datetime
+    :param forecast_rows: Forecast rows containing ``dt`` timestamps.
+    :type forecast_rows: list[dict] | None
+    :returns: Closest forecast row or ``None``.
+    :rtype: dict | None
+    """
     if not forecast_rows:
         return None
     ts = target_utc_aware.timestamp()
@@ -93,7 +130,14 @@ def _pick_forecast(target_utc_aware, forecast_rows):
 
 
 def _weather_to_features(weather):
-    """把天气数据映射为模型特征，天气缺失时回退为 0。"""
+    """
+    Map weather payload to model weather features with safe defaults.
+
+    :param weather: Forecast/weather payload.
+    :type weather: dict | None
+    :returns: ``(temp, pressure, humidity_bin)``.
+    :rtype: tuple[float, float, int]
+    """
     if not weather:
         return 20.0, 1000.0, 0
     temp = float(weather.get("temperature") or 20.0)
@@ -103,7 +147,14 @@ def _weather_to_features(weather):
 
 
 def parse_predict_query_args(args):
-    """解析 /predict/by-input 的 query 参数。"""
+    """
+    Parse and validate ``station_id`` and ``datetime`` query parameters.
+
+    :param args: Request query mapping.
+    :type args: werkzeug.datastructures.MultiDict
+    :returns: ``(station_id, target_dt, err)``.
+    :rtype: tuple[int | None, datetime | None, tuple[dict, int] | None]
+    """
     station_id_raw = args.get("station_id") # URL query params are always strings, e.g. station_id=42
     dt_raw = args.get("datetime") # Expecting format like datetime=2024-06-01%2015:30:00 (URL-encoded space)
 
@@ -136,7 +187,14 @@ def parse_predict_query_args(args):
 
 
 def predict_from_payload(payload):
-    """供 /predict 调用：直接用请求体特征做预测。单元测试接口也调用此函数。"""
+    """
+    Run prediction directly from request payload features.
+
+    :param payload: Single feature row or list of rows.
+    :type payload: dict | list[dict] | None
+    :returns: ``(response_body, status_code)``.
+    :rtype: tuple[dict, int]
+    """
     if MODEL is None:
         return {"error": "Model not loaded. Train/save model first."}, 500
     if payload is None:
@@ -159,7 +217,16 @@ def predict_from_payload(payload):
 
 
 def predict_by_station_and_datetime(station_id, target_dt_local_naive):
-    """供 /predict/by-input 调用：按站点+时间自动组装特征并预测。"""
+    """
+    Build features from station/time context and return prediction result.
+
+    :param station_id: Station identifier.
+    :type station_id: int
+    :param target_dt_local_naive: Local target datetime.
+    :type target_dt_local_naive: datetime
+    :returns: ``(response_body, status_code)``.
+    :rtype: tuple[dict, int]
+    """
     if MODEL is None:
         return {"error": "Model not loaded. Train/save model first."}, 500
 

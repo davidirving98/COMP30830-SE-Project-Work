@@ -1,0 +1,20 @@
+Flask
+scikit-learn
+joblib
+requests
+SQLAlchemy
+PyMySQL
+python-dotenv
+pandas
+numpy
+simplejson
+
+# For testing
+pytest
+
+# For documentation
+Sphinx
+
+# For running notebooks (optional)
+ipykernel
+notebook

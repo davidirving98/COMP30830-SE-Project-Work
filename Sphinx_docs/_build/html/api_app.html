@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>app API &#8212; DublinBike_WheelyWise 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="bikeinfo_SQL API" href="api_bikeinfo_sql.html" />
+    <link rel="prev" title="jcdecaux API" href="api_jcdecaux.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-app">
+<span id="app-api"></span><h1>app API<a class="headerlink" href="#module-app" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="app.index">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.index" title="Link to this definition">¶</a></dt>
+<dd><p>Render the homepage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Flask HTML response.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.stations">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">stations</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.stations" title="Link to this definition">¶</a></dt>
+<dd><p>Return latest station data, with API fallback if DB fails.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with stations or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.stations_refresh">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">stations_refresh</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.stations_refresh" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch live stations from API and persist a new snapshot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with save result or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.weather">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">weather</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.weather" title="Link to this definition">¶</a></dt>
+<dd><p>Return current weather payload.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with weather or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.forecast">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">forecast</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.forecast" title="Link to this definition">¶</a></dt>
+<dd><p>Return forecast payload.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with forecast or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.station_info">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">station_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">station_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#app.station_info" title="Link to this definition">¶</a></dt>
+<dd><p>Return station details plus current weather.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>station_id</strong> (<em>int</em>) – Station numeric identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON response with station/weather or error payload.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.stations_sql">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">stations_sql</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.stations_sql" title="Link to this definition">¶</a></dt>
+<dd><p>Return station rows from SQL backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with stations or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.availability_sql">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">availability_sql</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.availability_sql" title="Link to this definition">¶</a></dt>
+<dd><p>Return current bike/stand availability from SQL backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with availability or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.station_sql_info">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">station_sql_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">station_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#app.station_sql_info" title="Link to this definition">¶</a></dt>
+<dd><p>Return station details from SQL backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>station_id</strong> (<em>int</em>) – Station numeric identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON response with station detail or error payload.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.station_history">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">station_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">station_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#app.station_history" title="Link to this definition">¶</a></dt>
+<dd><p>Return station history from SQL backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>station_id</strong> (<em>int</em>) – Station numeric identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON response with history or error payload.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>flask.wrappers.Response | tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.predict">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.predict" title="Link to this definition">¶</a></dt>
+<dd><p>Run model prediction from POST payload.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with prediction result or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.predict_by_input">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">predict_by_input</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#app.predict_by_input" title="Link to this definition">¶</a></dt>
+<dd><p>Run model prediction from query params <code class="docutils literal notranslate"><span class="pre">station_id</span></code> and <code class="docutils literal notranslate"><span class="pre">datetime</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON response with prediction result or error payload.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[flask.wrappers.Response, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">DublinBike_WheelyWise</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api_ml_service.html">ml_service API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_jcdecaux.html">jcdecaux API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">app API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#app.index"><code class="docutils literal notranslate"><span class="pre">index()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.stations"><code class="docutils literal notranslate"><span class="pre">stations()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.stations_refresh"><code class="docutils literal notranslate"><span class="pre">stations_refresh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.weather"><code class="docutils literal notranslate"><span class="pre">weather()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.forecast"><code class="docutils literal notranslate"><span class="pre">forecast()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.station_info"><code class="docutils literal notranslate"><span class="pre">station_info()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.stations_sql"><code class="docutils literal notranslate"><span class="pre">stations_sql()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.availability_sql"><code class="docutils literal notranslate"><span class="pre">availability_sql()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.station_sql_info"><code class="docutils literal notranslate"><span class="pre">station_sql_info()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.station_history"><code class="docutils literal notranslate"><span class="pre">station_history()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.predict"><code class="docutils literal notranslate"><span class="pre">predict()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.predict_by_input"><code class="docutils literal notranslate"><span class="pre">predict_by_input()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api_bikeinfo_sql.html">bikeinfo_SQL API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="api_jcdecaux.html" title="previous chapter">jcdecaux API</a></li>
+      <li>Next: <a href="api_bikeinfo_sql.html" title="next chapter">bikeinfo_SQL API</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Alex,David,Yian.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/api_app.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

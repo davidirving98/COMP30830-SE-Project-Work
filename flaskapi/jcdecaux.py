@@ -4,8 +4,13 @@ import os
 JCDECAUX_API_KEY = os.getenv("JCDECAUX_API_KEY")
 CONTRACT = "dublin"
 
-# Fetch station data from JCDecaux API and return a list of stations with relevant information
 def get_stations():
+    """
+    Fetch all station snapshots from JCDecaux API.
+
+    :returns: Station list with selected fields, or ``None`` on API failure.
+    :rtype: list[dict] | None
+    """
     url = (
         "https://api.jcdecaux.com/vls/v1/stations"
         f"?contract={CONTRACT}&apiKey={JCDECAUX_API_KEY}"
@@ -31,8 +36,15 @@ def get_stations():
     return stations
 
 
-# Fetch specific station data by station_id from JCDecaux API and return relevant information
 def get_station(station_id):
+    """
+    Fetch one station snapshot by station id.
+
+    :param station_id: Station numeric identifier.
+    :type station_id: int
+    :returns: Station payload, or ``None`` if not found/API failure.
+    :rtype: dict | None
+    """
 
     url = (
         "https://api.jcdecaux.com/vls/v1/stations"
@@ -56,8 +68,13 @@ def get_station(station_id):
     return None
 
 
-# When front page is loaded, we can fetch the station data and store it in the database, so that we can use it for later queries without hitting the API every time.
 def fetch_stations_raw():
+    """
+    Fetch raw station payload from JCDecaux API.
+
+    :returns: Raw API JSON list, or ``None`` on API failure.
+    :rtype: list[dict] | None
+    """
     url = (
         "https://api.jcdecaux.com/vls/v1/stations"
         f"?contract={CONTRACT}&apiKey={JCDECAUX_API_KEY}"

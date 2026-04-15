@@ -13,6 +13,12 @@ import config
 
 # config  provides database connection info and api keys, and also defines paths for local data storage (if needed)
 def _build_connection_string():
+    """
+    Build SQLAlchemy connection URL from config.
+
+    :returns: Database connection URL object.
+    :rtype: sqlalchemy.engine.URL
+    """
     return URL.create(
         drivername="mysql+pymysql",
         username=config.DB_USER,
@@ -29,6 +35,16 @@ engine = sqla.create_engine(_build_connection_string())
 
 # Helper function to execute SQL and return list of dicts
 def _fetch_all(sql, params=None):
+    """
+    Execute SQL and return rows as plain dicts.
+
+    :param sql: SQL query text.
+    :type sql: str
+    :param params: Optional SQL bind parameters.
+    :type params: dict | None
+    :returns: Query result rows.
+    :rtype: list[dict]
+    """
     with engine.connect() as conn:
         rows = conn.execute(
             sqla.text(sql), params or {}
@@ -38,11 +54,23 @@ def _fetch_all(sql, params=None):
 
 # main function to fetch data from database, used in app.py to serve API endpoints
 def get_stations_sql():
+    """
+    Return all station rows from database.
+
+    :returns: Station rows.
+    :rtype: list[dict]
+    """
     return _fetch_all("SELECT * FROM station")
 
 
 # fetch availability data from database
 def get_availability_sql():
+    """
+    Return all availability rows from database.
+
+    :returns: Availability rows.
+    :rtype: list[dict]
+    """
     return _fetch_all("SELECT * FROM availability")
 
 
@@ -50,6 +78,14 @@ def get_availability_sql():
 def get_station_sql(
     station_id,
 ):
+    """
+    Return latest merged station and availability row for one station.
+
+    :param station_id: Station numeric identifier.
+    :type station_id: int
+    :returns: Station payload or ``None`` when not found.
+    :rtype: dict | None
+    """
     sql = """
     SELECT
         s.number,
@@ -71,6 +107,14 @@ def get_station_sql(
 
 # get timeseries data from availability table.
 def get_station_history_sql(station_id):
+    """
+    Return recent availability history for one station.
+
+    :param station_id: Station numeric identifier.
+    :type station_id: int
+    :returns: Ordered history rows.
+    :rtype: list[dict]
+    """
     sql = """
     SELECT
         DATE_FORMAT(t.last_update, '%Y-%m-%d %H:%i:%s') AS last_update,
@@ -93,9 +137,14 @@ def get_station_history_sql(station_id):
 
 def get_prediction_db_features(station_id, target_time):
     """
-    Build DB-derived model features for one station at target_time:
-    - number, capacity(bike_stands), lat, lng
-    - bikes_1d_mean, bikes_same_slot_mean from availability history prior to target_time
+    Build DB-derived features for model inference.
+
+    :param station_id: Station numeric identifier.
+    :type station_id: int
+    :param target_time: Target UTC-naive datetime.
+    :type target_time: datetime
+    :returns: Feature payload or ``None`` when station is missing.
+    :rtype: dict | None
     """
     sql = """
     SELECT
@@ -127,6 +176,12 @@ def get_prediction_db_features(station_id, target_time):
 
 # get latest view data from database, which is updated every time the front page loads and fetches new data from API
 def get_latest_stations_view():
+    """
+    Return latest availability snapshot joined with station info.
+
+    :returns: Latest station view rows.
+    :rtype: list[dict]
+    """
     sql = """
     SELECT
         s.number,
@@ -151,6 +206,12 @@ def get_latest_stations_view():
 
 # get the latest refresh time from the availability table
 def get_latest_refresh_time():
+    """
+    Return latest availability refresh timestamp.
+
+    :returns: Most recent ``last_update`` value, or ``None``.
+    :rtype: datetime | None
+    """
     sql = "SELECT MAX(last_update) AS last_update FROM availability"
     rows = _fetch_all(sql)
     return rows[0]["last_update"] if rows else None
@@ -159,6 +220,15 @@ def get_latest_refresh_time():
 # function to save raw data from API to database, called in app.py when front page loads and fetches new data from API
 # share the same strategy with incell04_import_api_to_database.py
 def save_snapshot(raw_data):
+    """
+    Save API snapshot into ``station`` and ``availability`` tables.
+
+    :param raw_data: Raw station list from JCDecaux API.
+    :type raw_data: list[dict] | None
+    :returns: Counts of written station and availability rows.
+    :rtype: dict
+    :raises ValueError: If ``raw_data`` is not a list.
+    """
     if not raw_data:
         return {"stations_written": 0, "availability_written": 0}
     if not isinstance(raw_data, list):

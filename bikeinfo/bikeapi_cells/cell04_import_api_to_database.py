@@ -91,6 +91,12 @@ LIMIT 1
 
 
 def ensure_availability_feature_columns():
+    """
+    Ensure derived feature columns exist on ``availability`` table.
+
+    :returns: None
+    :rtype: None
+    """
     with engine.begin() as conn:
         for col_name in ("bikes_1d_mean", "bikes_same_slot_mean"):
             exists = conn.execute(
@@ -108,6 +114,18 @@ def ensure_availability_feature_columns():
 
 
 def rolling_mean_with_min_periods(values, window_size, min_periods):
+    """
+    Compute mean over a leading window when enough points are present.
+
+    :param values: Numeric samples in reverse-chronological order.
+    :type values: list[float | int]
+    :param window_size: Max number of values to use.
+    :type window_size: int
+    :param min_periods: Minimum required sample count.
+    :type min_periods: int
+    :returns: Mean value or ``None`` when samples are insufficient.
+    :rtype: float | None
+    """
     usable = values[:window_size]
     if len(usable) < min_periods:
         return None
@@ -115,12 +133,34 @@ def rolling_mean_with_min_periods(values, window_size, min_periods):
 
 
 def mean_with_min_periods(values, min_periods):
+    """
+    Compute mean when enough points are present.
+
+    :param values: Numeric samples.
+    :type values: list[float | int]
+    :param min_periods: Minimum required sample count.
+    :type min_periods: int
+    :returns: Mean value or ``None`` when samples are insufficient.
+    :rtype: float | None
+    """
     if len(values) < min_periods:
         return None
     return float(fmean(values))
 
 
 def get_station_history_means(conn, station_number, target_time):
+    """
+    Build rolling history features for a station at target time.
+
+    :param conn: Active SQLAlchemy connection.
+    :type conn: sqlalchemy.engine.Connection
+    :param station_number: Station numeric identifier.
+    :type station_number: int
+    :param target_time: Target UTC datetime.
+    :type target_time: datetime | None
+    :returns: ``(bikes_1d_mean, bikes_same_slot_mean)``.
+    :rtype: tuple[float | None, float | None]
+    """
     history_rows = conn.execute(
         sqla.text(history_query_template.format(limit=INTERVALS_PER_WEEK)),
         {"number": station_number},
@@ -145,6 +185,16 @@ def get_station_history_means(conn, station_number, target_time):
 
 
 def prune_old_availability(conn, retention_days=7):
+    """
+    Delete old availability rows beyond retention window.
+
+    :param conn: Active SQLAlchemy connection.
+    :type conn: sqlalchemy.engine.Connection
+    :param retention_days: Data retention window in days.
+    :type retention_days: int
+    :returns: None
+    :rtype: None
+    """
     cutoff_utc = datetime.now(timezone.utc) - timedelta(days=retention_days)
     result = conn.execute(
         delete_old_availability_sql,
@@ -158,6 +208,13 @@ def prune_old_availability(conn, retention_days=7):
 
 
 def import_once():
+    """
+    Execute one API pull and persist snapshot into database.
+
+    :returns: None
+    :rtype: None
+    :raises requests.RequestException: If API request fails.
+    """
     # Execute one pull + insert
     resp = requests.get(config.BIKE_STATUS_URL, timeout=20)
     resp.raise_for_status()

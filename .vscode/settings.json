@@ -3,6 +3,7 @@
   "python-envs.defaultEnvManager": "ms-python.python:conda",
   "python-envs.defaultPackageManager": "ms-python.python:conda",
   "python-envs.pythonProjects": [],
+  "autoDocstring.docstringFormat": "sphinx",
   "files.watcherExclude": {
     "**/.git/**": true,
     "**/node_modules/**": true,
@@ -20,4 +21,5 @@
     "**/__pycache__": true,
     "**/.ipynb_checkpoints": true
   }
+
 }
