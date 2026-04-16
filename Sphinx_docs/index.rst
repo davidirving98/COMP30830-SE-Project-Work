@@ -17,3 +17,4 @@ Project API documentation built with Sphinx autodoc.
    api_jcdecaux
    api_app
    api_bikeinfo_sql
+   api_openweather
