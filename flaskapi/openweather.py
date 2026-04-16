@@ -12,9 +12,11 @@ APP_LOCAL_TZ = ZoneInfo("Europe/Dublin")
 
 def _format_local_time_from_utc_ts(ts_seconds, fmt):
     """
-    OpenWeather 的 dt 是 UTC 秒级时间戳。
-    统一先按 UTC 解析，再转换到 Europe/Dublin 展示，
-    避免依赖服务器本地时区导致的夏令时偏差。
+    Convert a UTC timestamp to local Dublin time.
+
+    :param ts_seconds: Unix timestamp (in seconds)
+    :param fmt: Output time format string
+    :return: Formatted local time string
     """
     return (
         datetime.fromtimestamp(int(ts_seconds), tz=timezone.utc)
@@ -23,6 +25,12 @@ def _format_local_time_from_utc_ts(ts_seconds, fmt):
     )
 
 def get_weather():
+    """
+    Retrieve current weather data for Dublin from OpenWeather API.
+
+    :return: Dictionary containing temperature, pressure, weather condition,
+         wind speed, and humidity. Returns None if the API request fails.
+    """
     url = ( f"https://api.openweathermap.org/data/2.5/weather"
             f"?lat={LAT}&lon={LON}&appid={OPENWEATHER_API_KEY}&units=metric" )
 
@@ -44,6 +52,12 @@ def get_weather():
 
 
 def get_forecast(full_series=False):
+    """
+    Retrieve the next 1 hour and 3 hours weather forecast data for Dublin.
+
+    :param full_series: Whether to return full forecast data
+    :return: List of forecast dictionaries, or None if request fails
+    """
     url = (f"https://pro.openweathermap.org/data/2.5/forecast/hourly"
            f"?lat={LAT}&lon={LON}&appid={OPENWEATHER_API_KEY}&units=metric")
 
