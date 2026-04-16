@@ -21,11 +21,11 @@ WheelyWise is a bike-sharing application that helps you find information about b
 
 ## Features
 
-- **User Authentication**: Create an account and log in for a personalized experience.
+- **User Authentication**: Create an account and log in for a personalised experience.
 - **Interactive Map**: View stations across Dublin on a map.
 - **Navigation Assistance**: Get station addresses and directions from your current location.
 - **Weather Forecast**: Check 24-hour weather information to plan your bike trips.
-- **Bike Availability Trends**: Analyze bike availability trends for specific stations.
+- **Bike Availability Trends**: Analyse bike availability trends for specific stations.
 
 ---
 
@@ -180,7 +180,7 @@ For questions or feedback, feel free to reach out:
 
 ### Made by:
 
-- Alex
-- David
-- Yian
+- Alex (Fangxun) Wu
+- David Irving
+- Yian Zhou
 
