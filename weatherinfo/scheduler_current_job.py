@@ -3,10 +3,13 @@ import traceback
 import datetime
 import time
 import os
+import sys
+from pathlib import Path
 import weatherinfo
 import json
 import sqlalchemy as sqla
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 import traceback
 import glob
 import os
@@ -15,6 +18,11 @@ import requests
 import time
 from IPython.display import display
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+import config
+
 def weather_current_to_db(current_data, in_engine):
 
     # let us load only the parts that we have included in our db:
@@ -22,6 +30,8 @@ def weather_current_to_db(current_data, in_engine):
     # main VARCHAR(256),
     # description VARCHAR(256),
     # temp FLOAT,
+    # humidity FLOAT,
+    # pressure FLOAT,
     # wind_speed FLOAT,
     # snapshot_time DATETIME
 
@@ -33,15 +43,17 @@ def weather_current_to_db(current_data, in_engine):
     main = current_data.get("weather", [{}])[0].get("main")
     description = current_data.get("weather", [{}])[0].get("description")
     temp = current_data.get("main", {}).get("temp")
+    humidity = current_data.get("main", {}).get("humidity")
+    pressure = current_data.get("main", {}).get("pressure")
     wind_speed = current_data.get("wind", {}).get("speed")
     snapshot_time = datetime.datetime.now(datetime.timezone.utc)
 
-    curr_vals = (dt, main, description, temp, wind_speed, snapshot_time)
+    curr_vals = (dt, main, description, temp, humidity, pressure, wind_speed, snapshot_time)
 
-    # now let us use the engine to insert into table current
+    # now let us use the engine to insert into table weather
     sql = text("""
-        INSERT INTO current (dt, main, description, temp, wind_speed, snapshot_time)
-        VALUES (:dt, :main, :description, :temp, :wind_speed, :snapshot_time)
+        INSERT INTO curr_weather (dt, main, description, temp, humidity, pressure, wind_speed, snapshot_time)
+        VALUES (:dt, :main, :description, :temp, :humidity, :pressure, :wind_speed, :snapshot_time)
     """)
 
     vals = {
@@ -49,6 +61,8 @@ def weather_current_to_db(current_data, in_engine):
         "main": main,
         "description": description,
         "temp": temp,
+        "humidity": humidity,
+        "pressure": pressure,
         "wind_speed": wind_speed,
         "snapshot_time": snapshot_time,
     }
@@ -57,15 +71,23 @@ def weather_current_to_db(current_data, in_engine):
         conn.execute(sql, vals)
 
 def main():
-    USER = "root"
-    PASSWORD = "Christen9812"
-    PORT = "3306"
-    DB = "local_database_weather"
-    URI = "127.0.0.1"
+    USER = config.DB_USER
+    PASSWORD = config.DB_PASSWORD
+    PORT = str(config.DB_PORT)
+    DB = config.DB_NAME
+    URI = config.DB_HOST
 
-    connection_string = "mysql+pymysql://{}:{}@{}:{}/{}".format(USER, PASSWORD, URI, PORT, DB)
-
-    engine = create_engine(connection_string, echo = True)
+    engine = create_engine(
+        URL.create(
+            "mysql+pymysql",
+            username=USER,
+            password=PASSWORD,
+            host=URI,
+            port=int(PORT),
+            database=DB,
+        ),
+        echo=True,
+    )
 
     try:
         current_r = requests.get(weatherinfo.CURRENT_WEATHER_URI, params=
@@ -77,4 +99,3 @@ def main():
 
 # CTRL + Z or CTRL + C to stop it
 main()
-

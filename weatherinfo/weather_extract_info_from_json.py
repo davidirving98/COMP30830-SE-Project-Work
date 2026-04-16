@@ -3,8 +3,15 @@ import traceback
 import datetime
 import time
 import os
+import sys
+from pathlib import Path
 import weatherinfo
 import json
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+import config
 
 
 def weather_current_to_db(text):
@@ -73,11 +80,11 @@ def weather_forecast_to_db(text):
     print(fore_vals)
 
 def main():
-    USER = "root"
-    PASSWORD = "Christen9812"
-    PORT = "3306"
-    DB = "local_database_weather"
-    URI = "127.0.0.1"
+    USER = config.DB_USER
+    PASSWORD = config.DB_PASSWORD
+    PORT = str(config.DB_PORT)
+    DB = config.DB_NAME
+    URI = config.DB_HOST
 
     connection_string = "mysql+pymysql://{}:{}@{}:{}/{}".format(USER, PASSWORD, URI, PORT, DB)
 

@@ -3,10 +3,13 @@ import traceback
 import datetime
 import time
 import os
+import sys
+from pathlib import Path
 import weatherinfo
 import json
 import sqlalchemy as sqla
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 import traceback
 import glob
 import os
@@ -15,11 +18,16 @@ import requests
 import time
 from IPython.display import display
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+import config
+
 def weather_forecast_to_db(forecast_data, in_engine):
     snapshot_time = datetime.datetime.now(datetime.timezone.utc)
     sql = text("""
-        INSERT INTO hourly (future_dt, main, description, temp, wind_speed, snapshot_time)
-        VALUES (:future_dt, :main, :description, :temp, :wind_speed, :snapshot_time)
+        INSERT INTO forecast_weather (future_dt, main, description, temp, humidity, pressure, wind_speed, snapshot_time)
+        VALUES (:future_dt, :main, :description, :temp, :humidity, :pressure, :wind_speed, :snapshot_time)
         """)
     # let us limit data insert to the next 24 hours
     forecast_list = forecast_data.get("list", []) [:8]
@@ -30,6 +38,8 @@ def weather_forecast_to_db(forecast_data, in_engine):
         # main VARCHAR(256),
         # description VARCHAR(256),
         # temp FLOAT,
+        # humidity FLOAT,
+        # pressure FLOAT,
         # wind_speed FLOAT,
         # snapshot_time DATETIME
 
@@ -39,6 +49,8 @@ def weather_forecast_to_db(forecast_data, in_engine):
             main = item.get("weather", [{}])[0].get("main")
             description = item.get("weather", [{}])[0].get("description")
             temp = item.get("main", {}).get("temp")
+            humidity = item.get("main", {}).get("humidity")
+            pressure = item.get("main", {}).get("pressure")
             wind_speed = item.get("wind", {}).get("speed")
 
             vals = {
@@ -46,6 +58,8 @@ def weather_forecast_to_db(forecast_data, in_engine):
                 "main": main,
                 "description": description,
                 "temp": temp,
+                "humidity": humidity,
+                "pressure": pressure,
                 "wind_speed": wind_speed,
                 "snapshot_time": snapshot_time,
             }
@@ -54,15 +68,23 @@ def weather_forecast_to_db(forecast_data, in_engine):
 
 
 def main():
-    USER = "root"
-    PASSWORD = "Christen9812"
-    PORT = "3306"
-    DB = "local_database_weather"
-    URI = "127.0.0.1"
+    USER = config.DB_USER
+    PASSWORD = config.DB_PASSWORD
+    PORT = str(config.DB_PORT)
+    DB = config.DB_NAME
+    URI = config.DB_HOST
 
-    connection_string = "mysql+pymysql://{}:{}@{}:{}/{}".format(USER, PASSWORD, URI, PORT, DB)
-
-    engine = create_engine(connection_string, echo = True)
+    engine = create_engine(
+        URL.create(
+            "mysql+pymysql",
+            username=USER,
+            password=PASSWORD,
+            host=URI,
+            port=int(PORT),
+            database=DB,
+        ),
+        echo=True,
+    )
 
     try:
         forecast_r = requests.get(weatherinfo.FORECAST_WEATHER_URI, params=
