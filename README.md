@@ -13,6 +13,8 @@ WheelyWise is a bike-sharing application that helps you find information about b
   - [Configuration](#configuration)
 - [Usage](#usage)
 - [Testing](#testing)
+  - [Unit Testing](#unit-testing)
+  - [Acceptance Testing](#acceptance-testing)
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
@@ -135,7 +137,7 @@ make html
 ---
 
 ## Testing
-
+### Unit Testing
 Run tests using the following command:
 
 ```bash
@@ -157,6 +159,14 @@ The testing suite covers various aspects of the application, including:
   - Prediction generation by station and datetime
 - **Utility/Mocking Examples** (`testing-examples/`):
   - Calculator, string operations, and mock tests
+
+### Acceptance Testing
+
+Acceptance testing was conducted to evaluate the system from an end-user perspective, focusing on features that users can directly interact with through the web application.
+
+The tests are organised around realistic user scenarios, ensuring that core functionalities work as expected in a clear and practical way. Rather than testing individual components in isolation, we validated the overall user experience across the system.
+
+This acceptance testing complements unit testing by ensuring that the system behaves correctly under real usage conditions.
 
 ---
 
