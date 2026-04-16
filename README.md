@@ -62,7 +62,7 @@ Follow these steps to set up WheelyWise:
 4. **Navigate to the project directory:**
 
    ```bash
-   cd COMP30830-David
+   cd COMP30830-SE-Project-Work
    ```
 
 5. **Install dependencies:**
@@ -108,6 +108,22 @@ To run WheelyWise, follow these steps:
 3. **Sign up and log in** to use the app.
 
 4. **Navigate to the map page** via the navigation bar.
+
+### Project Structure
+
+The project is organized by major functional folders:
+
+```text
+COMP30830-SE-Project-Work/
+├── flaskapi/            # Flask backend app and frontend static/template assets
+├── bikeinfo/            # Bike data ingestion and database pipeline scripts
+├── machine_learning/    # Model training, testing, and prediction utilities
+├── weatherinfo/         # Weather data collection and processing scripts
+├── tests/               # Unit and acceptance test example
+├── Sphinx_docs/         # Sphinx comments documentation source and generated docs
+├── genai_chats/         # Saved GenAI chat records/screenshots for project work
+└── documents_for_report/# Report materials and design resources
+```
 
 For more advanced usage and API details, check out the documentation built with Sphinx in the `Sphinx_docs` directory:
 
@@ -183,4 +199,3 @@ For questions or feedback, feel free to reach out:
 - Alex (Fangxun) Wu
 - David Irving
 - Yian Zhou
-
