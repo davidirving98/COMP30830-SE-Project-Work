@@ -14,6 +14,7 @@ WheelyWise is a bike-sharing application that helps you find information about b
 - [Usage](#usage)
 - [Testing](#testing)
 - [Contributing](#contributing)
+- [License](#license)
 - [Contact](#contact)
 
 ---
