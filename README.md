@@ -14,6 +14,7 @@ WheelyWise is a bike-sharing application that helps you find information about b
 - [Usage](#usage)
 - [Testing](#testing)
 - [Contributing](#contributing)
+- [License](#license)
 - [Contact](#contact)
 
 ---
@@ -165,7 +166,7 @@ We welcome contributions! To contribute, follow these steps:
 ---
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
