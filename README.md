@@ -107,9 +107,7 @@ To run WheelyWise, follow these steps:
 
 2. **Access the application** at `http://localhost:5000` in your browser.
 
-3. **Sign up and log in** to use the app.
-
-4. **Navigate to the map page** via the navigation bar.
+3. **Get started with WheelyWise!!**.
 
 ### Project Structure
 
