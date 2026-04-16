@@ -107,7 +107,7 @@ To run WheelyWise, follow these steps:
 
 2. **Access the application** at `http://localhost:5000` in your browser.
 
-3. **Get started with WheelyWise!!**.
+3. **Get started with WheelyWise!**
 
 ### Project Structure
 
